@@ -212,6 +212,14 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	}
 
 	if isPrecompile {
+		// TODO special design for zecrey os
+		input, err := PadAddressIntoInput(caller.Address(), addr, input)
+		if err != nil {
+			evm.StateDB.RevertToSnapshot(snapshot)
+			if err != ErrExecutionReverted {
+				gas = 0
+			}
+		}
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		// Initialise a new contract and set the code that is to be used by the EVM.
@@ -275,6 +283,14 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 
 	// It is allowed to call precompiles, even via delegatecall
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
+		// TODO special design for zecrey os
+		input, err := PadAddressIntoInput(caller.Address(), addr, input)
+		if err != nil {
+			evm.StateDB.RevertToSnapshot(snapshot)
+			if err != ErrExecutionReverted {
+				gas = 0
+			}
+		}
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		addrCopy := addr
@@ -316,6 +332,14 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 
 	// It is allowed to call precompiles, even via delegatecall
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
+		// TODO special design for zecrey os
+		input, err := PadAddressIntoInput(caller.Address(), addr, input)
+		if err != nil {
+			evm.StateDB.RevertToSnapshot(snapshot)
+			if err != ErrExecutionReverted {
+				gas = 0
+			}
+		}
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		addrCopy := addr
@@ -365,6 +389,14 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	}
 
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
+		// TODO special design for zecrey os
+		input, err := PadAddressIntoInput(caller.Address(), addr, input)
+		if err != nil {
+			evm.StateDB.RevertToSnapshot(snapshot)
+			if err != ErrExecutionReverted {
+				gas = 0
+			}
+		}
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		// At this point, we use a copy of address. If we don't, the go compiler will
