@@ -14,7 +14,7 @@ var (
 
 type StatefulPrecompiledContract interface {
 	PrecompiledContract
-	RunStateful(ctx context.Context, evm *EVM, addr common.Address, input []byte, value *big.Int) (ret []byte, err error)
+	RunStateful(commit bool, ctx context.Context, evm *EVM, addr common.Address, input []byte, value *big.Int) (ret []byte, err error)
 }
 
 func SetTmpConfig(ctx context.Context, commit bool) {
@@ -29,6 +29,7 @@ func SetCustomPrecompiledContracts(customContracts map[common.Address]StatefulPr
 // RunStatefulPrecompiledContract runs a stateful precompiled contract and ignores the address and
 // value arguments. It uses the RunPrecompiledContract function from the geth vm package
 func (e *EVM) RunStatefulPrecompiledContract(
+	commit bool,
 	ctx context.Context,
 	p StatefulPrecompiledContract,
 	caller common.Address, // address arg is unused
@@ -41,7 +42,7 @@ func (e *EVM) RunStatefulPrecompiledContract(
 		return nil, 0, ErrOutOfGas
 	}
 	suppliedGas -= gasCost
-	output, err := p.RunStateful(ctx, e, caller, input, value)
+	output, err := p.RunStateful(commit, ctx, e, caller, input, value)
 	return output, suppliedGas, err
 }
 
