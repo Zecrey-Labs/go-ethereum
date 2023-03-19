@@ -223,7 +223,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 	if isPrecompile || isStatefulPrecompile {
 		if isStatefulPrecompile {
-			ret, gas, err = evm.RunStatefulPrecompiledContract(tmpCommit, tmpCtx, statefulP, caller.Address(), input, gas, value)
+			ret, gas, err = evm.RunStatefulPrecompiledContract(tmpCommit, tmpCtx, statefulP, evm.Origin, input, gas, value)
 		} else {
 			ret, gas, err = RunPrecompiledContract(p, input, gas)
 		}
@@ -333,7 +333,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 	statefulP, isStatefulPrecompile := evm.statefulPrecompile(addr)
 	if isPrecompile || isStatefulPrecompile {
 		if isStatefulPrecompile {
-			ret, gas, err = evm.RunStatefulPrecompiledContract(tmpCommit, tmpCtx, statefulP, caller.Address(), input, gas, big0)
+			ret, gas, err = evm.RunStatefulPrecompiledContract(tmpCommit, tmpCtx, statefulP, evm.Origin, input, gas, big0)
 		} else {
 			ret, gas, err = RunPrecompiledContract(p, input, gas)
 		}
