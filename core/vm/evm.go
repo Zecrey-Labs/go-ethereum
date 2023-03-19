@@ -57,6 +57,15 @@ func (evm *EVM) precompile(addr common.Address) (PrecompiledContract, bool) {
 	return p, ok
 }
 
+// TODO stateful precompiled contracts check
+func (evm *EVM) statefulPrecompile(addr common.Address) (StatefulPrecompiledContract, bool) {
+	if customPrecompiledContracts == nil {
+		return nil, false
+	}
+	p, ok := customPrecompiledContracts[addr]
+	return p, ok
+}
+
 // BlockContext provides the EVM with auxiliary information. Once provided
 // it shouldn't be modified.
 type BlockContext struct {
@@ -176,6 +185,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	}
 	snapshot := evm.StateDB.Snapshot()
 	p, isPrecompile := evm.precompile(addr)
+	statefulP, isStatefulPrecompile := evm.statefulPrecompile(addr)
 
 	if !evm.StateDB.Exist(addr) {
 		if !isPrecompile && evm.chainRules.IsEIP158 && value.Sign() == 0 {
@@ -211,13 +221,12 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 	}
 
-	if isPrecompile {
-		// TODO special design for zecrey os
-		input, err := PadAddressIntoInput(caller.Address(), addr, input)
-		if err != nil {
-			evm.StateDB.RevertToSnapshot(snapshot)
-			if err != ErrExecutionReverted {
-				gas = 0
+	if isPrecompile || isStatefulPrecompile {
+		if isStatefulPrecompile {
+			if !tmpCommit {
+				ret, gas, err = evm.PreRunStatefulPrecompiledContract(tmpCtx, statefulP, caller.Address(), input, gas, value)
+			} else {
+				ret, gas, err = evm.RunStatefulPrecompiledContract(tmpCtx, statefulP, caller.Address(), input, gas, value)
 			}
 		}
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
@@ -283,14 +292,6 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 
 	// It is allowed to call precompiles, even via delegatecall
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
-		// TODO special design for zecrey os
-		input, err := PadAddressIntoInput(caller.Address(), addr, input)
-		if err != nil {
-			evm.StateDB.RevertToSnapshot(snapshot)
-			if err != ErrExecutionReverted {
-				gas = 0
-			}
-		}
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		addrCopy := addr
@@ -331,13 +332,14 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 	}
 
 	// It is allowed to call precompiles, even via delegatecall
-	if p, isPrecompile := evm.precompile(addr); isPrecompile {
-		// TODO special design for zecrey os
-		input, err := PadAddressIntoInput(caller.Address(), addr, input)
-		if err != nil {
-			evm.StateDB.RevertToSnapshot(snapshot)
-			if err != ErrExecutionReverted {
-				gas = 0
+	p, isPrecompile := evm.precompile(addr)
+	statefulP, isStatefulPrecompile := evm.statefulPrecompile(addr)
+	if isPrecompile || isStatefulPrecompile {
+		if isStatefulPrecompile {
+			if !tmpCommit {
+				ret, gas, err = evm.PreRunStatefulPrecompiledContract(tmpCtx, statefulP, caller.Address(), input, gas, big0)
+			} else {
+				ret, gas, err = evm.RunStatefulPrecompiledContract(tmpCtx, statefulP, caller.Address(), input, gas, big0)
 			}
 		}
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
@@ -389,14 +391,6 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	}
 
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
-		// TODO special design for zecrey os
-		input, err := PadAddressIntoInput(caller.Address(), addr, input)
-		if err != nil {
-			evm.StateDB.RevertToSnapshot(snapshot)
-			if err != ErrExecutionReverted {
-				gas = 0
-			}
-		}
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		// At this point, we use a copy of address. If we don't, the go compiler will
