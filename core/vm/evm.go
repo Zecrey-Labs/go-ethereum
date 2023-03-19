@@ -228,8 +228,9 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			} else {
 				ret, gas, err = evm.RunStatefulPrecompiledContract(tmpCtx, statefulP, caller.Address(), input, gas, value)
 			}
+		} else {
+			ret, gas, err = RunPrecompiledContract(p, input, gas)
 		}
-		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
@@ -341,8 +342,9 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 			} else {
 				ret, gas, err = evm.RunStatefulPrecompiledContract(tmpCtx, statefulP, caller.Address(), input, gas, big0)
 			}
+		} else {
+			ret, gas, err = RunPrecompiledContract(p, input, gas)
 		}
-		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
 		addrCopy := addr
 		// Initialise a new contract and make initialise the delegate values
