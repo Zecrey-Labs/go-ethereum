@@ -17,6 +17,8 @@
 package vm
 
 import (
+	"bytes"
+	"fmt"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -121,6 +123,8 @@ type EVM struct {
 	// available gas is calculated in gasCall* according to the 63/64 rule and later
 	// applied in opCall*.
 	callGasTemp uint64
+
+	IsSimulated bool
 }
 
 // NewEVM returns a new EVM. The returned EVM is not thread safe and should
@@ -225,7 +229,24 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			// The depth-check is already done, and precompiles handled above
 			contract := NewContract(caller, AccountRef(addrCopy), value, gas)
 			contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), code)
-			ret, err = evm.interpreter.Run(contract, input, false)
+			// if that's simulate, do assets change check
+			if evm.IsSimulated {
+				fmt.Println("simulate transaction")
+				allowanceSelector := GetMethodSelector("allowance(address,address)")
+				if bytes.Equal(allowanceSelector, input[:4]) {
+					return ret, gas, nil
+				}
+				ret, err = evm.interpreter.Run(contract, input, false)
+				// catch transferFrom call
+				transferFromSelector := GetMethodSelector("transferFrom(address,address,uint256)")
+				// if that's transferFrom call, decode inputs
+				if bytes.Equal(transferFromSelector, input[:4]) {
+					fmt.Println("input info:", input)
+					fmt.Println("input size:", len(input))
+				}
+			} else {
+				ret, err = evm.interpreter.Run(contract, input, false)
+			}
 			gas = contract.Gas
 		}
 	}
