@@ -2,6 +2,7 @@ package ethapi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -65,5 +66,10 @@ func DoSimulateCall(ctx context.Context, b Backend, args TransactionArgs, blockN
 	if err != nil {
 		return result, fmt.Errorf("err: %w (supplied gas %d)", err, msg.Gas())
 	}
+	simulateResp, err := json.Marshal(evm.SimulateResp)
+	if err != nil {
+		return result, err
+	}
+	result.ReturnData = simulateResp
 	return result, nil
 }

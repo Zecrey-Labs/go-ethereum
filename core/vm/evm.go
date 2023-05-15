@@ -19,6 +19,7 @@ package vm
 import (
 	"bytes"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -124,7 +125,8 @@ type EVM struct {
 	// applied in opCall*.
 	callGasTemp uint64
 
-	IsSimulated bool
+	IsSimulated  bool
+	SimulateResp SimulateAssetsChangeResp
 }
 
 // NewEVM returns a new EVM. The returned EVM is not thread safe and should
@@ -232,27 +234,71 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			// if that's simulate, do assets change check
 			if evm.IsSimulated {
 				fmt.Println("simulate transaction")
-				allowanceSelector := GetMethodSelector("allowance(address,address)")
-				if bytes.Equal(allowanceSelector, input[:4]) {
-					fmt.Println("in allowance")
-					approveAmount, _ := new(big.Int).SetString("1000000000000000000000000000", 10)
-					ret = approveAmount.FillBytes(make([]byte, 32))
-					return ret, gas, nil
-				}
-				ret, err = evm.interpreter.Run(contract, input, false)
 				// catch transferFrom call
 				transferFromSelector := GetMethodSelector("transferFrom(address,address,uint256)")
 				// if that's transferFrom call, decode inputs
-				if bytes.Equal(transferFromSelector, input[:4]) {
-					if len(input) == 100 {
-						info := input[4:]
-						fromAddr := common.BytesToAddress(info[:32])
-						approveSelector := GetMethodSelector("approve(address,uint256)")
-						var buf bytes.Buffer
-						buf.Write(approveSelector)
-						buf.Write(info[32:])
-						ret, gas, err = evm.Call(AccountRef(fromAddr), addr, buf.Bytes(), 80000, big.NewInt(0))
+				var assetChange AssetChange
+				if bytes.Equal(transferFromSelector, input[:4]) && len(input) == 100 {
+					info := input[4:]
+					fromAddr := common.BytesToAddress(info[:32])
+					var buf bytes.Buffer
+
+					// get allowance
+					allowanceSelector := GetMethodSelector("allowance(address,address)")
+					buf.Write(allowanceSelector)
+					buf.Write(info[:32])
+					buf.Write(new(big.Int).SetBytes(caller.Address().Bytes()).FillBytes(make([]byte, 32)))
+					var allowanceRet []byte
+					allowanceRet, _, err = evm.StaticCall(AccountRef(fromAddr), addr, buf.Bytes(), 80000)
+					if err != nil {
+						log.Warn("cannot get allowance:", err)
 					}
+					assetChange.Allowance = new(big.Int).SetBytes(allowanceRet).String()
+					// force approve
+					approveSelector := GetMethodSelector("approve(address,uint256)")
+					buf.Reset()
+					buf.Write(approveSelector)
+					buf.Write(new(big.Int).SetBytes(caller.Address().Bytes()).FillBytes(make([]byte, 32)))
+					buf.Write(info[64:])
+					_, _, err = evm.Call(AccountRef(fromAddr), addr, buf.Bytes(), 80000, big.NewInt(0))
+					if err != nil {
+						log.Warn("cannot approve for sender:", err)
+					}
+					// get before run balance
+					balanceOfSelector := GetMethodSelector("balanceOf(address)")
+					buf.Reset()
+					buf.Write(balanceOfSelector)
+					buf.Write(info[32:64])
+					var balanceRet []byte
+					balanceRet, _, err = evm.StaticCall(AccountRef(fromAddr), addr, buf.Bytes(), 80000)
+					if err != nil {
+						log.Warn("cannot get balance for sender")
+					}
+					fmt.Println("before balanceRet:", new(big.Int).SetBytes(balanceRet).String())
+					assetChange.AssetAddress = addr.Hex()
+					assetChange.AssetAmount = new(big.Int).SetBytes(info[64:]).String()
+					assetChange.Sender = fromAddr.Hex()
+					assetChange.Receiver = common.BytesToAddress(info[32:64]).Hex()
+					assetChange.ReceiverBalanceBefore = new(big.Int).SetBytes(balanceRet).String()
+				}
+				ret, err = evm.interpreter.Run(contract, input, false)
+				err = nil
+				if bytes.Equal(transferFromSelector, input[:4]) && len(input) == 100 {
+					info := input[4:]
+					fromAddr := common.BytesToAddress(info[:32])
+					var balanceRet []byte
+					balanceOfSelector := GetMethodSelector("balanceOf(address)")
+					var buf bytes.Buffer
+					buf.Write(balanceOfSelector)
+					buf.Write(info[32:64])
+					balanceRet, _, err = evm.StaticCall(AccountRef(fromAddr), addr, buf.Bytes(), 80000)
+					if err != nil {
+						log.Warn("cannot get balance for sender")
+					}
+					fmt.Println("after balanceRet:", new(big.Int).SetBytes(balanceRet).String())
+					// construct return data
+					assetChange.ReceiverBalanceAfter = new(big.Int).SetBytes(balanceRet).String()
+					evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
 				}
 				fmt.Println("end simulate")
 			} else {
