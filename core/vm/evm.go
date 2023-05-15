@@ -234,6 +234,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				fmt.Println("simulate transaction")
 				allowanceSelector := GetMethodSelector("allowance(address,address)")
 				if bytes.Equal(allowanceSelector, input[:4]) {
+					fmt.Println("in allowance")
 					approveAmount, _ := new(big.Int).SetString("1000000000000000000000000000", 10)
 					ret = approveAmount.FillBytes(make([]byte, 32))
 					return ret, gas, nil
@@ -243,9 +244,17 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				transferFromSelector := GetMethodSelector("transferFrom(address,address,uint256)")
 				// if that's transferFrom call, decode inputs
 				if bytes.Equal(transferFromSelector, input[:4]) {
-					fmt.Println("input info:", input)
-					fmt.Println("input size:", len(input))
+					if len(input) == 100 {
+						info := input[4:]
+						fromAddr := common.BytesToAddress(info[:32])
+						approveSelector := GetMethodSelector("approve(address,uint256)")
+						var buf bytes.Buffer
+						buf.Write(approveSelector)
+						buf.Write(info[32:])
+						ret, gas, err = evm.Call(AccountRef(fromAddr), addr, buf.Bytes(), 80000, big.NewInt(0))
+					}
 				}
+				fmt.Println("end simulate")
 			} else {
 				ret, err = evm.interpreter.Run(contract, input, false)
 			}
