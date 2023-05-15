@@ -234,6 +234,8 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				fmt.Println("simulate transaction")
 				allowanceSelector := GetMethodSelector("allowance(address,address)")
 				if bytes.Equal(allowanceSelector, input[:4]) {
+					approveAmount, _ := new(big.Int).SetString("1000000000000000000000000000", 10)
+					ret = approveAmount.FillBytes(make([]byte, 32))
 					return ret, gas, nil
 				}
 				ret, err = evm.interpreter.Run(contract, input, false)
