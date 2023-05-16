@@ -17,9 +17,6 @@
 package vm
 
 import (
-	"bytes"
-	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -233,74 +230,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), code)
 			// if that's simulate, do assets change check
 			if evm.IsSimulated {
-				fmt.Println("simulate transaction")
-				// catch transferFrom call
-				transferFromSelector := GetMethodSelector("transferFrom(address,address,uint256)")
-				// if that's transferFrom call, decode inputs
-				var assetChange AssetChange
-				if bytes.Equal(transferFromSelector, input[:4]) && len(input) == 100 {
-					info := input[4:]
-					fromAddr := common.BytesToAddress(info[:32])
-					var buf bytes.Buffer
-
-					// get allowance
-					allowanceSelector := GetMethodSelector("allowance(address,address)")
-					buf.Write(allowanceSelector)
-					buf.Write(info[:32])
-					buf.Write(new(big.Int).SetBytes(caller.Address().Bytes()).FillBytes(make([]byte, 32)))
-					var allowanceRet []byte
-					allowanceRet, _, err = evm.StaticCall(AccountRef(fromAddr), addr, buf.Bytes(), 80000)
-					if err != nil {
-						log.Warn("cannot get allowance:", err)
-					}
-					assetChange.Allowance = new(big.Int).SetBytes(allowanceRet).String()
-					// force approve
-					approveSelector := GetMethodSelector("approve(address,uint256)")
-					buf.Reset()
-					buf.Write(approveSelector)
-					buf.Write(new(big.Int).SetBytes(caller.Address().Bytes()).FillBytes(make([]byte, 32)))
-					buf.Write(info[64:])
-					_, _, err = evm.Call(AccountRef(fromAddr), addr, buf.Bytes(), 80000, big.NewInt(0))
-					if err != nil {
-						log.Warn("cannot approve for sender:", err)
-					}
-					// get before run balance
-					balanceOfSelector := GetMethodSelector("balanceOf(address)")
-					buf.Reset()
-					buf.Write(balanceOfSelector)
-					buf.Write(info[32:64])
-					var balanceRet []byte
-					balanceRet, _, err = evm.StaticCall(AccountRef(fromAddr), addr, buf.Bytes(), 80000)
-					if err != nil {
-						log.Warn("cannot get balance for sender")
-					}
-					fmt.Println("before balanceRet:", new(big.Int).SetBytes(balanceRet).String())
-					assetChange.AssetAddress = addr.Hex()
-					assetChange.AssetAmount = new(big.Int).SetBytes(info[64:]).String()
-					assetChange.Sender = fromAddr.Hex()
-					assetChange.Receiver = common.BytesToAddress(info[32:64]).Hex()
-					assetChange.ReceiverBalanceBefore = new(big.Int).SetBytes(balanceRet).String()
-				}
-				ret, err = evm.interpreter.Run(contract, input, false)
-				err = nil
-				if bytes.Equal(transferFromSelector, input[:4]) && len(input) == 100 {
-					info := input[4:]
-					fromAddr := common.BytesToAddress(info[:32])
-					var balanceRet []byte
-					balanceOfSelector := GetMethodSelector("balanceOf(address)")
-					var buf bytes.Buffer
-					buf.Write(balanceOfSelector)
-					buf.Write(info[32:64])
-					balanceRet, _, err = evm.StaticCall(AccountRef(fromAddr), addr, buf.Bytes(), 80000)
-					if err != nil {
-						log.Warn("cannot get balance for sender")
-					}
-					fmt.Println("after balanceRet:", new(big.Int).SetBytes(balanceRet).String())
-					// construct return data
-					assetChange.ReceiverBalanceAfter = new(big.Int).SetBytes(balanceRet).String()
-					evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
-				}
-				fmt.Println("end simulate")
+				ret, err = evm.simulateAction(contract, caller, addr, input)
 			} else {
 				ret, err = evm.interpreter.Run(contract, input, false)
 			}
