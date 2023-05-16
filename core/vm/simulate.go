@@ -28,6 +28,7 @@ type AssetChange struct {
 	Sender       string
 	Receiver     string
 	AssetAmount  string
+	Spender      string
 	Allowance    string
 }
 
@@ -48,19 +49,6 @@ func (evm *EVM) erc20Allowance(contract *Contract, from, to common.Address) *big
 	return new(big.Int).SetBytes(allowanceRet)
 }
 
-func (evm *EVM) erc20Approve(caller ContractRef, fromAddr common.Address, addr common.Address, amount *big.Int) {
-	// force approve
-	var buf bytes.Buffer
-	buf.Write(approveSelector)
-	buf.Write(new(big.Int).SetBytes(caller.Address().Bytes()).FillBytes(make([]byte, 32)))
-	buf.Write(amount.FillBytes(make([]byte, 32)))
-	var err error
-	_, _, err = evm.Call(AccountRef(fromAddr), addr, buf.Bytes(), 80000, big.NewInt(0))
-	if err != nil {
-		log.Warn("simulate: cannot approve for sender:", err)
-	}
-}
-
 func (evm *EVM) erc20Balance(contract *Contract, from common.Address) *big.Int {
 	// get balance
 	var buf bytes.Buffer
@@ -75,6 +63,19 @@ func (evm *EVM) erc20Balance(contract *Contract, from common.Address) *big.Int {
 		log.Warn("simulate: cannot get balance for sender:", err)
 	}
 	return new(big.Int).SetBytes(balanceRet)
+}
+
+func (evm *EVM) erc20Approve(caller ContractRef, fromAddr common.Address, addr common.Address, amount *big.Int) {
+	// force approve
+	var buf bytes.Buffer
+	buf.Write(approveSelector)
+	buf.Write(new(big.Int).SetBytes(caller.Address().Bytes()).FillBytes(make([]byte, 32)))
+	buf.Write(amount.FillBytes(make([]byte, 32)))
+	var err error
+	_, _, err = evm.Call(AccountRef(fromAddr), addr, buf.Bytes(), 80000, big.NewInt(0))
+	if err != nil {
+		log.Warn("simulate: cannot approve for sender:", err)
+	}
 }
 
 func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr common.Address, input []byte) (ret []byte, err error) {
@@ -96,6 +97,7 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.AssetAmount = amount.String()
 		assetChange.Sender = fromAddr.Hex()
 		assetChange.Receiver = toAddr.Hex()
+		assetChange.Spender = caller.Address().Hex()
 		evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
 	}
 	ret, err = evm.interpreter.Run(contract, input, false)
