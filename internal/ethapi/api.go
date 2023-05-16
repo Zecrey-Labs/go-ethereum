@@ -1040,6 +1040,22 @@ func (s *BlockChainAPI) SimulateCall(ctx context.Context, args TransactionArgs, 
 	return resp, result.Err
 }
 
+func (s *BlockChainAPI) BlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (types.Receipts, error) {
+	block, err := s.b.BlockByNumberOrHash(ctx, blockNrOrHash)
+	if err != nil {
+		return nil, err
+	}
+	hash := block.Hash()
+	if hash == (common.Hash{}) {
+		hash = block.Header().Hash()
+	}
+	receipts, err := s.b.GetReceipts(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+	return receipts, nil
+}
+
 func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNrOrHash rpc.BlockNumberOrHash, gasCap uint64) (hexutil.Uint64, error) {
 	// Binary search the gas requirement, as it may be higher than the amount used
 	var (

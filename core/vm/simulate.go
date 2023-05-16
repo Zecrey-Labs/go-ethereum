@@ -108,7 +108,8 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.Sender = caller.Address().Hex()
 		assetChange.SenderBalance = evm.erc20Balance(contract, caller.Address()).String()
 		assetChange.Receiver = toAddr.Hex()
-		assetChange.Spender = caller.Address().Hex()
+		assetChange.Spender = common.Address{}.Hex()
+		assetChange.Allowance = "0"
 		evm.SimulateResp = append(evm.SimulateResp, assetChange)
 	}
 	ret, err = evm.interpreter.Run(contract, input, false)
