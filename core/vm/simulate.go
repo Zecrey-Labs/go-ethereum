@@ -2,7 +2,6 @@ package vm
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
@@ -98,9 +97,6 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.Sender = fromAddr.Hex()
 		assetChange.Receiver = toAddr.Hex()
 		evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
-
-		balance := evm.erc20Balance(contract, toAddr)
-		fmt.Println("balance:", balance.String())
 	}
 	ret, err = evm.interpreter.Run(contract, input, false)
 	if err != nil {
