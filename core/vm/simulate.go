@@ -24,12 +24,13 @@ type SimulateAssetsChangeResp struct {
 }
 
 type AssetChange struct {
-	AssetAddress string
-	Sender       string
-	Receiver     string
-	AssetAmount  string
-	Spender      string
-	Allowance    string
+	AssetAddress  string
+	Sender        string
+	Receiver      string
+	AssetAmount   string
+	Spender       string
+	Allowance     string
+	SenderBalance string
 }
 
 func (evm *EVM) erc20Allowance(contract *Contract, from, to common.Address) *big.Int {
@@ -96,6 +97,7 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.AssetAddress = addr.Hex()
 		assetChange.AssetAmount = amount.String()
 		assetChange.Sender = fromAddr.Hex()
+		assetChange.SenderBalance = evm.erc20Balance(contract, fromAddr).String()
 		assetChange.Receiver = toAddr.Hex()
 		assetChange.Spender = caller.Address().Hex()
 		evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
