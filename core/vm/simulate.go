@@ -120,6 +120,9 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 }
 
 func (evm *EVM) simulateNativeAsset(from, to common.Address, value *big.Int) {
+	if value.Cmp(big.NewInt(0)) == 0 {
+		return
+	}
 	// catch transferFrom call
 	// if that's transferFrom call, decode inputs
 	var assetChange AssetChange
