@@ -20,10 +20,6 @@ var (
 	transferSelector     = GetMethodSelector("transfer(address,uint256)")
 )
 
-type SimulateAssetsChangeResp struct {
-	AssetChanges []AssetChange
-}
-
 type AssetChange struct {
 	AssetAddress  string
 	Sender        string
@@ -101,7 +97,7 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.SenderBalance = evm.erc20Balance(contract, fromAddr).String()
 		assetChange.Receiver = toAddr.Hex()
 		assetChange.Spender = caller.Address().Hex()
-		evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
+		evm.SimulateResp = append(evm.SimulateResp, assetChange)
 	} else if bytes.Equal(transferSelector, input[:4]) && len(input) == 68 {
 		info := input[4:]
 		toAddr := common.BytesToAddress(info[:32])
@@ -113,7 +109,7 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.SenderBalance = evm.erc20Balance(contract, caller.Address()).String()
 		assetChange.Receiver = toAddr.Hex()
 		assetChange.Spender = caller.Address().Hex()
-		evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
+		evm.SimulateResp = append(evm.SimulateResp, assetChange)
 	}
 	ret, err = evm.interpreter.Run(contract, input, false)
 	if err != nil {

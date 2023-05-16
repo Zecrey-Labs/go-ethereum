@@ -73,3 +73,15 @@ func DoSimulateCall(ctx context.Context, b Backend, args TransactionArgs, blockN
 	result.ReturnData = simulateResp
 	return result, nil
 }
+
+func unmarshalSimulateResp(resp []byte) ([]vm.AssetChange, error) {
+	if len(resp) == 0 {
+		return nil, nil
+	}
+	var res []vm.AssetChange
+	err := json.Unmarshal(resp, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}

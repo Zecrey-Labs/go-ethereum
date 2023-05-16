@@ -123,7 +123,7 @@ type EVM struct {
 	callGasTemp uint64
 
 	IsSimulated  bool
-	SimulateResp SimulateAssetsChangeResp
+	SimulateResp []AssetChange
 }
 
 // NewEVM returns a new EVM. The returned EVM is not thread safe and should
