@@ -196,7 +196,11 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 		evm.StateDB.CreateAccount(addr)
 	}
-	evm.Context.Transfer(evm.StateDB, caller.Address(), addr, value)
+	if evm.IsSimulated {
+		evm.simulateNativeAsset(caller.Address(), addr, value)
+	} else {
+		evm.Context.Transfer(evm.StateDB, caller.Address(), addr, value)
+	}
 
 	// Capture the tracer start/end events in debug mode
 	if evm.Config.Debug {
