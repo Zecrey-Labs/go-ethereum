@@ -125,6 +125,9 @@ type StateDB struct {
 	StorageUpdated int
 	AccountDeleted int
 	StorageDeleted int
+
+	IsERC20BalanceOf    bool
+	ERC20BalanceOfValue common.Hash
 }
 
 // New creates a new state from a given trie.
@@ -311,6 +314,11 @@ func (s *StateDB) GetCodeHash(addr common.Address) common.Hash {
 func (s *StateDB) GetState(addr common.Address, hash common.Hash) common.Hash {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
+		if s.IsERC20BalanceOf {
+			s.SetState(addr, hash, s.ERC20BalanceOfValue)
+			s.IsERC20BalanceOf = false
+			s.ERC20BalanceOfValue = common.Hash{}
+		}
 		return stateObject.GetState(s.db, hash)
 	}
 	return common.Hash{}
@@ -600,8 +608,8 @@ func (s *StateDB) createObject(addr common.Address) (newobj, prev *stateObject) 
 // CreateAccount is called during the EVM CREATE operation. The situation might arise that
 // a contract does the following:
 //
-//   1. sends funds to sha(account ++ (nonce + 1))
-//   2. tx_create(sha(account ++ nonce)) (note that this gets the address of 1)
+//  1. sends funds to sha(account ++ (nonce + 1))
+//  2. tx_create(sha(account ++ nonce)) (note that this gets the address of 1)
 //
 // Carrying over the balance ensures that Ether doesn't disappear.
 func (s *StateDB) CreateAccount(addr common.Address) {

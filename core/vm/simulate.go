@@ -2,8 +2,8 @@ package vm
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/ethereum/go-ethereum/common"
+	state2 "github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -145,7 +145,7 @@ func (evm *EVM) erc20Allowance(contract *Contract, from, to common.Address) *big
 	return new(big.Int).SetBytes(allowanceRet)
 }
 
-func (evm *EVM) erc20Balance(contract *Contract, from common.Address) *big.Int {
+func (evm *EVM) erc20Balance(contract *Contract, from common.Address, expectAmount *big.Int) *big.Int {
 	// get balance
 	var buf bytes.Buffer
 	buf.Write(balanceOfSelector)
@@ -154,6 +154,12 @@ func (evm *EVM) erc20Balance(contract *Contract, from common.Address) *big.Int {
 		balanceRet []byte
 		err        error
 	)
+	// force to increase user's balance
+	stateDB := evm.StateDB.(*state2.StateDB)
+	stateDB.IsERC20BalanceOf = true
+	var value [32]byte
+	copy(value[:], expectAmount.FillBytes(make([]byte, 32))[:])
+	stateDB.ERC20BalanceOfValue = value
 	balanceRet, err = evm.interpreter.Run(contract, buf.Bytes(), true)
 	if err != nil {
 		log.Warn("simulate: cannot get balance for sender:", err)
@@ -196,20 +202,10 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.AssetAddress = addr.Hex()
 		assetChange.AssetAmount = amount.String()
 		assetChange.Sender = fromAddr.Hex()
-		balance := evm.erc20Balance(contract, fromAddr)
+		balance := evm.erc20Balance(contract, fromAddr, amount)
 		assetChange.SenderBalance = balance.String()
 		if balance.Cmp(amount) < 0 {
 			evm.SimulateResp.SuccessWithoutPrePay = false
-			// force to increase user's balance
-			balancesSlot := big.NewInt(0).FillBytes(make([]byte, 32))
-			addrBytes := new(big.Int).SetBytes(fromAddr.Bytes()).FillBytes(make([]byte, 32))
-			dest := crypto.Keccak256Hash(append(addrBytes, balancesSlot[:]...))
-			var res [32]byte
-			amountBytes := amount.FillBytes(make([]byte, 32))
-			copy(res[:], amountBytes[:])
-			evm.StateDB.SetState(contract.Address(), dest, res)
-			state := evm.StateDB.GetState(contract.Address(), dest)
-			fmt.Println("state:", state.Big().String())
 		}
 		assetChange.Receiver = toAddr.Hex()
 		assetChange.Spender = caller.Address().Hex()
@@ -224,7 +220,7 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.AssetAddress = addr.Hex()
 		assetChange.AssetAmount = amount.String()
 		assetChange.Sender = caller.Address().Hex()
-		balance := evm.erc20Balance(contract, caller.Address())
+		balance := evm.erc20Balance(contract, caller.Address(), amount)
 		assetChange.SenderBalance = balance.String()
 		assetChange.Receiver = toAddr.Hex()
 		assetChange.Spender = common.Address{}.Hex()
