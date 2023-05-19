@@ -123,7 +123,7 @@ type EVM struct {
 	callGasTemp uint64
 
 	IsSimulated  bool
-	SimulateResp []AssetChange
+	SimulateResp SimulateResponse
 }
 
 // NewEVM returns a new EVM. The returned EVM is not thread safe and should
@@ -173,9 +173,16 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	if evm.depth > int(params.CallCreateDepth) {
 		return nil, gas, ErrDepth
 	}
+	const initGas = 80000000
 	// Fail if we're trying to transfer more than the available balance
-	if value.Sign() != 0 && !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
-		return nil, gas, ErrInsufficientBalance
+	if evm.IsSimulated {
+		gas = initGas
+		evm.simulateNativeAsset(caller.Address(), addr, value)
+		gas -= 21000
+	} else {
+		if value.Sign() != 0 && !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
+			return nil, gas, ErrInsufficientBalance
+		}
 	}
 	snapshot := evm.StateDB.Snapshot()
 	p, isPrecompile := evm.precompile(addr)
@@ -196,11 +203,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 		evm.StateDB.CreateAccount(addr)
 	}
-	if evm.IsSimulated {
-		evm.simulateNativeAsset(caller.Address(), addr, value)
-	} else {
-		evm.Context.Transfer(evm.StateDB, caller.Address(), addr, value)
-	}
+	evm.Context.Transfer(evm.StateDB, caller.Address(), addr, value)
 
 	// Capture the tracer start/end events in debug mode
 	if evm.Config.Debug {
@@ -247,12 +250,17 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
 		if err != ErrExecutionReverted {
-			gas = 0
+			if !evm.IsSimulated {
+				gas = 0
+			}
 		}
 		// TODO: consider clearing up unused snapshots:
 		//} else {
 		//	evm.StateDB.DiscardSnapshot(snapshot)
+		evm.SimulateResp.SuccessWithPrePay = false
 	}
+	evm.SimulateResp.SuccessWithPrePay = true
+	evm.SimulateResp.GasCost = initGas - gas
 	return ret, gas, err
 }
 

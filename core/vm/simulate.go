@@ -20,6 +20,14 @@ var (
 	transferSelector     = GetMethodSelector("transfer(address,uint256)")
 )
 
+type SimulateResponse struct {
+	AssetChanges         []AssetChange
+	GasCost              uint64
+	SuccessWithPrePay    bool
+	SuccessWithoutPrePay bool
+	ErrInfo              string
+}
+
 type AssetChange struct {
 	AssetAddress  string
 	Sender        string
@@ -28,6 +36,7 @@ type AssetChange struct {
 	Spender       string
 	Allowance     string
 	SenderBalance string
+	ActionType    string
 }
 
 func (evm *EVM) erc20Allowance(contract *Contract, from, to common.Address) *big.Int {
@@ -89,15 +98,22 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		allowance := evm.erc20Allowance(contract, fromAddr, caller.Address())
 		assetChange.Allowance = allowance.String()
 		// force approve
-		evm.erc20Approve(caller, fromAddr, addr, amount)
+		if allowance.Cmp(amount) < 0 {
+			evm.erc20Approve(caller, fromAddr, addr, amount)
+		}
 		// fill asset change info
 		assetChange.AssetAddress = addr.Hex()
 		assetChange.AssetAmount = amount.String()
 		assetChange.Sender = fromAddr.Hex()
-		assetChange.SenderBalance = evm.erc20Balance(contract, fromAddr).String()
+		balance := evm.erc20Balance(contract, fromAddr)
+		assetChange.SenderBalance = balance.String()
+		if balance.Cmp(amount) < 0 {
+			evm.SimulateResp.SuccessWithoutPrePay = false
+		}
 		assetChange.Receiver = toAddr.Hex()
 		assetChange.Spender = caller.Address().Hex()
-		evm.SimulateResp = append(evm.SimulateResp, assetChange)
+		assetChange.ActionType = "transferFrom"
+		evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
 	} else if bytes.Equal(transferSelector, input[:4]) && len(input) == 68 {
 		info := input[4:]
 		toAddr := common.BytesToAddress(info[:32])
@@ -110,10 +126,12 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.Receiver = toAddr.Hex()
 		assetChange.Spender = common.Address{}.Hex()
 		assetChange.Allowance = "0"
-		evm.SimulateResp = append(evm.SimulateResp, assetChange)
+		assetChange.ActionType = "transfer"
+		evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
 	}
 	ret, err = evm.interpreter.Run(contract, input, false)
 	if err != nil {
+		evm.SimulateResp.ErrInfo = err.Error()
 		log.Warn("simulate: unable to run contract:", err)
 	}
 	return ret, nil
@@ -134,5 +152,6 @@ func (evm *EVM) simulateNativeAsset(from, to common.Address, value *big.Int) {
 	assetChange.Receiver = to.Hex()
 	assetChange.Spender = common.Address{}.Hex()
 	assetChange.Allowance = "0"
-	evm.SimulateResp = append(evm.SimulateResp, assetChange)
+	assetChange.ActionType = "native"
+	evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
 }
