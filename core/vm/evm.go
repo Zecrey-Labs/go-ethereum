@@ -169,20 +169,16 @@ func (evm *EVM) Interpreter() *EVMInterpreter {
 // the necessary steps to create accounts and reverses the state in case of an
 // execution error or failed value transfer.
 func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int) (ret []byte, leftOverGas uint64, err error) {
+	if evm.IsSimulated {
+		return evm.simulateCall(caller, addr, input, gas, value)
+	}
 	// Fail if we're trying to execute above the call depth limit
 	if evm.depth > int(params.CallCreateDepth) {
 		return nil, gas, ErrDepth
 	}
-	const initGas = 80000000
 	// Fail if we're trying to transfer more than the available balance
-	if evm.IsSimulated {
-		gas = initGas
-		evm.simulateNativeAsset(caller.Address(), addr, value)
-		gas -= 21000
-	} else {
-		if value.Sign() != 0 && !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
-			return nil, gas, ErrInsufficientBalance
-		}
+	if value.Sign() != 0 && !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
+		return nil, gas, ErrInsufficientBalance
 	}
 	snapshot := evm.StateDB.Snapshot()
 	p, isPrecompile := evm.precompile(addr)
@@ -236,11 +232,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			contract := NewContract(caller, AccountRef(addrCopy), value, gas)
 			contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), code)
 			// if that's simulate, do assets change check
-			if evm.IsSimulated {
-				ret, err = evm.simulateAction(contract, caller, addr, input)
-			} else {
-				ret, err = evm.interpreter.Run(contract, input, false)
-			}
+			ret, err = evm.interpreter.Run(contract, input, false)
 			gas = contract.Gas
 		}
 	}
@@ -250,17 +242,12 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
 		if err != ErrExecutionReverted {
-			if !evm.IsSimulated {
-				gas = 0
-			}
+			gas = 0
 		}
 		// TODO: consider clearing up unused snapshots:
 		//} else {
 		//	evm.StateDB.DiscardSnapshot(snapshot)
-		evm.SimulateResp.SuccessWithPrePay = false
 	}
-	evm.SimulateResp.SuccessWithPrePay = true
-	evm.SimulateResp.GasCost = initGas - gas
 	return ret, gas, err
 }
 
