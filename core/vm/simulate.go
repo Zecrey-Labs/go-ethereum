@@ -113,13 +113,19 @@ func (evm *EVM) simulateCall(caller ContractRef, addr common.Address, input []by
 	// when we're in homestead this also counts for code storage gas errors.
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
+		if err != ErrExecutionReverted {
+			evm.SimulateResp.GasCost += initGas - gas
+			gas = 0
+		}
 		// TODO: consider clearing up unused snapshots:
 		//} else {
 		//	evm.StateDB.DiscardSnapshot(snapshot)
 		evm.SimulateResp.SuccessWithPrePay = false
 	}
 	evm.SimulateResp.SuccessWithPrePay = true
-	evm.SimulateResp.GasCost = initGas - gas
+	if gas != 0 {
+		evm.SimulateResp.GasCost += initGas - gas
+	}
 	return ret, gas, err
 }
 
