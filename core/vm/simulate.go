@@ -177,7 +177,9 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 	// catch transferFrom call
 	// if that's transferFrom call, decode inputs
 	var assetChange AssetChange
+	ignoreErr := false
 	if bytes.Equal(transferFromSelector, input[:4]) && len(input) == 100 {
+		ignoreErr = true
 		info := input[4:]
 		fromAddr := common.BytesToAddress(info[:32])
 		toAddr := common.BytesToAddress(info[32:64])
@@ -203,6 +205,7 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.ActionType = "transferFrom"
 		evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
 	} else if bytes.Equal(transferSelector, input[:4]) && len(input) == 68 {
+		ignoreErr = true
 		info := input[4:]
 		toAddr := common.BytesToAddress(info[:32])
 		amount := new(big.Int).SetBytes(info[32:])
@@ -210,17 +213,24 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.AssetAddress = addr.Hex()
 		assetChange.AssetAmount = amount.String()
 		assetChange.Sender = caller.Address().Hex()
-		assetChange.SenderBalance = evm.erc20Balance(contract, caller.Address()).String()
+		balance := evm.erc20Balance(contract, caller.Address())
+		assetChange.SenderBalance = balance.String()
 		assetChange.Receiver = toAddr.Hex()
 		assetChange.Spender = common.Address{}.Hex()
 		assetChange.Allowance = "0"
 		assetChange.ActionType = "transfer"
+		if balance.Cmp(amount) < 0 {
+			evm.SimulateResp.SuccessWithoutPrePay = false
+		}
 		evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
 	}
 	ret, err = evm.interpreter.Run(contract, input, false)
 	if err != nil {
 		evm.SimulateResp.ErrInfo = err.Error()
 		log.Warn("simulate: unable to run contract:", err)
+	}
+	if ignoreErr {
+		return ret, nil
 	}
 	return ret, nil
 }
@@ -236,10 +246,14 @@ func (evm *EVM) simulateNativeAsset(from, to common.Address, value *big.Int) {
 	assetChange.AssetAddress = common.Address{}.Hex()
 	assetChange.AssetAmount = value.String()
 	assetChange.Sender = from.Hex()
-	assetChange.SenderBalance = evm.StateDB.GetBalance(from).String()
+	balance := evm.StateDB.GetBalance(from)
+	assetChange.SenderBalance = balance.String()
 	assetChange.Receiver = to.Hex()
 	assetChange.Spender = common.Address{}.Hex()
 	assetChange.Allowance = "0"
 	assetChange.ActionType = "native"
+	if balance.Cmp(value) < 0 {
+		evm.SimulateResp.SuccessWithoutPrePay = false
+	}
 	evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
 }
