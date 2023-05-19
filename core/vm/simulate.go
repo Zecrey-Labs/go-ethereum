@@ -14,8 +14,6 @@ func GetMethodSelector(nameAndParams string) []byte {
 	return crypto.Keccak256Hash([]byte(nameAndParams)).Bytes()[:4]
 }
 
-const initGas = 80000000
-
 var (
 	transferFromSelector = GetMethodSelector("transferFrom(address,address,uint256)")
 	approveSelector      = GetMethodSelector("approve(address,uint256)")
@@ -44,12 +42,12 @@ type AssetChange struct {
 }
 
 func (evm *EVM) simulateCall(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int) (ret []byte, leftOverGas uint64, err error) {
+	initGas := gas
 	// Fail if we're trying to execute above the call depth limit
 	if evm.depth > int(params.CallCreateDepth) {
 		return nil, gas, ErrDepth
 	}
 	// Fail if we're trying to transfer more than the available balance
-	gas = initGas
 	evm.simulateNativeAsset(caller.Address(), addr, value)
 	gas -= 21000
 	snapshot := evm.StateDB.Snapshot()
