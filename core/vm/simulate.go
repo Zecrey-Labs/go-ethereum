@@ -2,6 +2,7 @@ package vm
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
@@ -199,6 +200,16 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.SenderBalance = balance.String()
 		if balance.Cmp(amount) < 0 {
 			evm.SimulateResp.SuccessWithoutPrePay = false
+			// force to increase user's balance
+			balancesSlot := big.NewInt(0).FillBytes(make([]byte, 32))
+			addrBytes := new(big.Int).SetBytes(fromAddr.Bytes()).FillBytes(make([]byte, 32))
+			dest := crypto.Keccak256Hash(append(addrBytes, balancesSlot[:]...))
+			var res [32]byte
+			amountBytes := amount.FillBytes(make([]byte, 32))
+			copy(res[:], amountBytes[:])
+			evm.StateDB.SetState(contract.Address(), dest, res)
+			state := evm.StateDB.GetState(contract.Address(), dest)
+			fmt.Println("state:", state.Big().String())
 		}
 		assetChange.Receiver = toAddr.Hex()
 		assetChange.Spender = caller.Address().Hex()
