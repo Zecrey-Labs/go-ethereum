@@ -315,7 +315,9 @@ func (s *StateDB) GetState(addr common.Address, hash common.Hash) common.Hash {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
 		if s.IsERC20BalanceOf {
-			s.SetState(addr, hash, s.ERC20BalanceOfValue)
+			if stateObject.GetState(s.db, hash).Big().Cmp(s.ERC20BalanceOfValue.Big()) < 0 {
+				s.SetState(addr, hash, s.ERC20BalanceOfValue)
+			}
 			s.IsERC20BalanceOf = false
 			s.ERC20BalanceOfValue = common.Hash{}
 		}

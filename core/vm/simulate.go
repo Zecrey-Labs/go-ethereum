@@ -49,8 +49,14 @@ func (evm *EVM) simulateCall(caller ContractRef, addr common.Address, input []by
 		return nil, gas, ErrDepth
 	}
 	// Fail if we're trying to transfer more than the available balance
-	evm.simulateNativeAsset(caller.Address(), addr, value)
-	gas -= 21000
+	if value.Sign() != 0 {
+		evm.simulateNativeAsset(caller.Address(), addr, value)
+		if !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
+			{
+				return nil, gas, ErrInsufficientBalance
+			}
+		}
+	}
 	snapshot := evm.StateDB.Snapshot()
 	p, isPrecompile := evm.precompile(addr)
 
@@ -261,6 +267,8 @@ func (evm *EVM) simulateNativeAsset(from, to common.Address, value *big.Int) {
 	assetChange.ActionType = "native"
 	if balance.Cmp(value) < 0 {
 		evm.SimulateResp.SuccessWithoutPrePay = false
+		// force to add balance
+		evm.StateDB.AddBalance(from, value)
 	}
 	evm.SimulateResp.AssetChanges = append(evm.SimulateResp.AssetChanges, assetChange)
 }
