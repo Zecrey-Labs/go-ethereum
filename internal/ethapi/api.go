@@ -1058,7 +1058,7 @@ func (s *BlockChainAPI) BlockReceipts(ctx context.Context, blockNrOrHash rpc.Blo
 	return receipts, nil
 }
 
-func (s *BlockChainAPI) Blocks(ctx context.Context, blockNums []rpc.BlockNumber) ([]map[string]interface{}, error) {
+func (s *BlockChainAPI) Headers(ctx context.Context, blockNums []rpc.BlockNumber) ([]map[string]interface{}, error) {
 	if len(blockNums) > 50 {
 		return nil, errors.New("request for max 50 blocks, exceed the max")
 	}
