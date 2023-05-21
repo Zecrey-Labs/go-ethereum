@@ -1041,6 +1041,7 @@ func (s *BlockChainAPI) SimulateCall(ctx context.Context, args TransactionArgs, 
 }
 
 func (s *BlockChainAPI) BlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (types.Receipts, error) {
+
 	block, err := s.b.BlockByNumberOrHash(ctx, blockNrOrHash)
 	if err != nil {
 		return nil, err
@@ -1053,7 +1054,20 @@ func (s *BlockChainAPI) BlockReceipts(ctx context.Context, blockNrOrHash rpc.Blo
 	if err != nil {
 		return nil, err
 	}
+
 	return receipts, nil
+}
+
+func (s *BlockChainAPI) Blocks(ctx context.Context, blockNums []rpc.BlockNumber) ([]map[string]interface{}, error) {
+	var blockInfos []map[string]interface{}
+	for _, blockNum := range blockNums {
+		blockInfo, err := s.GetBlockByNumber(ctx, blockNum, false)
+		if err != nil {
+			return nil, err
+		}
+		blockInfos = append(blockInfos, blockInfo)
+	}
+	return blockInfos, nil
 }
 
 func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNrOrHash rpc.BlockNumberOrHash, gasCap uint64) (hexutil.Uint64, error) {
