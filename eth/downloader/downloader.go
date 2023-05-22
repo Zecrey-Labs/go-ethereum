@@ -20,6 +20,7 @@ package downloader
 import (
 	"errors"
 	"fmt"
+	ethereum "github.com/ethereum/go-ethereum/kontos"
 	"math/big"
 	"sync"
 	"sync/atomic"
