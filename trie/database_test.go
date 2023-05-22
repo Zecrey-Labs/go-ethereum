@@ -19,8 +19,8 @@ package trie
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/kontos/common"
+	"github.com/ethereum/go-ethereum/kontos/core/rawdb"
 )
 
 // Tests that the trie database returns a missing trie node error if attempting

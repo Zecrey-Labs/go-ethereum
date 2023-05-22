@@ -19,7 +19,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/kontos/common"
 	"github.com/urfave/cli/v2"
 )
 

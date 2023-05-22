@@ -22,7 +22,7 @@ package keystore
 import (
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/kontos/log"
 	"github.com/fsnotify/fsnotify"
 )
 

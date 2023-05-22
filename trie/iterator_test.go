@@ -23,11 +23,11 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
+	"github.com/ethereum/go-ethereum/kontos/common"
+	"github.com/ethereum/go-ethereum/kontos/core/rawdb"
+	"github.com/ethereum/go-ethereum/kontos/crypto"
+	"github.com/ethereum/go-ethereum/kontos/ethdb"
+	"github.com/ethereum/go-ethereum/kontos/ethdb/memorydb"
 )
 
 func TestEmptyIterator(t *testing.T) {

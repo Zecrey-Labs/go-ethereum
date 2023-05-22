@@ -2,11 +2,11 @@ package vm
 
 import (
 	"bytes"
-	"github.com/ethereum/go-ethereum/common"
-	state2 "github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/kontos/common"
+	state2 "github.com/ethereum/go-ethereum/kontos/core/state"
+	"github.com/ethereum/go-ethereum/kontos/crypto"
+	"github.com/ethereum/go-ethereum/kontos/log"
+	"github.com/ethereum/go-ethereum/kontos/params"
 	"math/big"
 )
 

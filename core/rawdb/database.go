@@ -26,11 +26,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethdb/leveldb"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/kontos/common"
+	"github.com/ethereum/go-ethereum/kontos/ethdb"
+	"github.com/ethereum/go-ethereum/kontos/ethdb/leveldb"
+	"github.com/ethereum/go-ethereum/kontos/ethdb/memorydb"
+	"github.com/ethereum/go-ethereum/kontos/log"
 	"github.com/olekukonko/tablewriter"
 )
 
