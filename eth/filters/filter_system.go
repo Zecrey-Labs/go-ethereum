@@ -21,6 +21,7 @@ package filters
 import (
 	"context"
 	"fmt"
+	ethereum "github.com/ethereum/go-ethereum/kontos"
 	"sync"
 	"sync/atomic"
 	"time"

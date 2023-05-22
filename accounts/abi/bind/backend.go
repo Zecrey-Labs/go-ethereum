@@ -19,6 +19,7 @@ package bind
 import (
 	"context"
 	"errors"
+	ethereum "github.com/ethereum/go-ethereum/kontos"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/kontos/common"

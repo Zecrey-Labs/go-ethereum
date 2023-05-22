@@ -17,6 +17,7 @@
 package keystore
 
 import (
+	ethereum "github.com/ethereum/go-ethereum/kontos"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/kontos/accounts"

@@ -19,6 +19,7 @@ package bind_test
 import (
 	"context"
 	"errors"
+	ethereum "github.com/ethereum/go-ethereum/kontos"
 	"math/big"
 	"reflect"
 	"strings"
