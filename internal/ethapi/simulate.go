@@ -64,7 +64,7 @@ func DoSimulateCall(ctx context.Context, b Backend, args TransactionArgs, blockN
 		return nil, fmt.Errorf("execution aborted (timeout = %v)", timeout)
 	}
 	if err != nil {
-		return result, fmt.Errorf("err: %w (supplied gas %d)", err, msg.Gas())
+		return result, fmt.Errorf("err: %w (supplied gas %d)", err, msg.GasLimit)
 	}
 	simulateResp, err := json.Marshal(evm.SimulateResp)
 	if err != nil {
