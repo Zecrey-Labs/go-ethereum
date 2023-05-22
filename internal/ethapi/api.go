@@ -1075,7 +1075,6 @@ func (s *BlockChainAPI) SimulateCall(ctx context.Context, args TransactionArgs, 
 }
 
 func (s *BlockChainAPI) BlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (types.Receipts, error) {
-
 	block, err := s.b.BlockByNumberOrHash(ctx, blockNrOrHash)
 	if err != nil {
 		return nil, err
@@ -1088,7 +1087,6 @@ func (s *BlockChainAPI) BlockReceipts(ctx context.Context, blockNrOrHash rpc.Blo
 	if err != nil {
 		return nil, err
 	}
-
 	return receipts, nil
 }
 
