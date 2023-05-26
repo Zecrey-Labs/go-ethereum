@@ -205,6 +205,39 @@ func (ec *Client) HeaderByNumber(ctx context.Context, number *big.Int) (*types.H
 	return head, err
 }
 
+// BlockReceipts returns block receipts
+func (ec *Client) BlockReceipts(ctx context.Context, hashOrNumber rpc.BlockNumberOrHash) (types.Receipts, error) {
+	var receipts types.Receipts
+	err := ec.c.CallContext(ctx, &receipts, "eth_blockReceipts", hashOrNumber)
+	if err == nil && receipts == nil {
+		err = ethereum.NotFound
+	}
+	return receipts, err
+}
+
+// HeadersByNumber returns block headers from the current canonical chain.
+func (ec *Client) Headers(ctx context.Context, numbers []*big.Int) ([]*types.Header, error) {
+	var heads []*types.Header
+	var numbersHex []string
+	for _, number := range numbers {
+		numbersHex = append(numbersHex, toBlockNumArg(number))
+	}
+	err := ec.c.CallContext(ctx, &heads, "eth_headers", numbersHex)
+	if err == nil && heads == nil {
+		err = ethereum.NotFound
+	}
+	return heads, err
+}
+
+func (ec *Client) SimulateCall(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
+	var hex hexutil.Bytes
+	err := ec.c.CallContext(ctx, &hex, "eth_simulateCall", toCallArg(msg), toBlockNumArg(blockNumber))
+	if err != nil {
+		return nil, err
+	}
+	return hex, nil
+}
+
 type rpcTransaction struct {
 	tx *types.Transaction
 	txExtraInfo
