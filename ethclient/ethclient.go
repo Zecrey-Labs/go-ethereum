@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
@@ -229,13 +230,13 @@ func (ec *Client) Headers(ctx context.Context, numbers []*big.Int) ([]*types.Hea
 	return heads, err
 }
 
-func (ec *Client) SimulateCall(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
-	var hex hexutil.Bytes
-	err := ec.c.CallContext(ctx, &hex, "eth_simulateCall", toCallArg(msg), toBlockNumArg(blockNumber))
+func (ec *Client) SimulateCall(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) (*vm.SimulateResponse, error) {
+	var simulateResp vm.SimulateResponse
+	err := ec.c.CallContext(ctx, &simulateResp, "eth_simulateCall", toCallArg(msg), toBlockNumArg(blockNumber))
 	if err != nil {
 		return nil, err
 	}
-	return hex, nil
+	return &simulateResp, nil
 }
 
 type rpcTransaction struct {
