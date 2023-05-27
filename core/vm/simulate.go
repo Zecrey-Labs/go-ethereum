@@ -2,10 +2,10 @@ package vm
 
 import (
 	"bytes"
+	corestate "github.com/ethereum/go-ethereum/core/state"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	state2 "github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -59,27 +59,60 @@ func (evm *EVM) simulateCall(caller ContractRef, addr common.Address, input []by
 			}
 		}
 	}
-	var snapshot = evm.StateDB.Snapshot()
+	snapshot := evm.StateDB.Snapshot()
+	p, isPrecompile := evm.precompile(addr)
+	debug := evm.Config.Tracer != nil
 
-	// Invoke tracer hooks that signal entering/exiting a call frame
-	if evm.Config.Tracer != nil {
-		evm.Config.Tracer.CaptureEnter(CALLCODE, caller.Address(), addr, input, gas, value)
-		defer func(startGas uint64) {
-			evm.Config.Tracer.CaptureExit(ret, startGas-gas, err)
-		}(gas)
+	if !evm.StateDB.Exist(addr) {
+		if !isPrecompile && evm.chainRules.IsEIP158 && value.Sign() == 0 {
+			// Calling a non existing account, don't do anything, but ping the tracer
+			if debug {
+				if evm.depth == 0 {
+					evm.Config.Tracer.CaptureStart(evm, caller.Address(), addr, false, input, gas, value)
+					evm.Config.Tracer.CaptureEnd(ret, 0, nil)
+				} else {
+					evm.Config.Tracer.CaptureEnter(CALL, caller.Address(), addr, input, gas, value)
+					evm.Config.Tracer.CaptureExit(ret, 0, nil)
+				}
+			}
+			return nil, gas, nil
+		}
+		evm.StateDB.CreateAccount(addr)
 	}
+	evm.Context.Transfer(evm.StateDB, caller.Address(), addr, value)
 
-	// It is allowed to call precompiles, even via delegatecall
-	if p, isPrecompile := evm.precompile(addr); isPrecompile {
+	// Capture the tracer start/end events in debug mode
+	if debug {
+		if evm.depth == 0 {
+			evm.Config.Tracer.CaptureStart(evm, caller.Address(), addr, false, input, gas, value)
+			defer func(startGas uint64) { // Lazy evaluation of the parameters
+				evm.Config.Tracer.CaptureEnd(ret, startGas-gas, err)
+			}(gas)
+		} else {
+			// Handle tracer events for entering and exiting a call frame
+			evm.Config.Tracer.CaptureEnter(CALL, caller.Address(), addr, input, gas, value)
+			defer func(startGas uint64) {
+				evm.Config.Tracer.CaptureExit(ret, startGas-gas, err)
+			}(gas)
+		}
+	}
+	if isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else {
-		addrCopy := addr
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
-		contract := NewContract(caller, AccountRef(caller.Address()), value, gas)
-		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
-		ret, err = evm.simulateAction(contract, caller, addr, input)
-		gas = contract.Gas
+		code := evm.StateDB.GetCode(addr)
+		if len(code) == 0 {
+			ret, err = nil, nil // gas is unchanged
+		} else {
+			addrCopy := addr
+			// If the account has no code, we can abort here
+			// The depth-check is already done, and precompiles handled above
+			contract := NewContract(caller, AccountRef(addrCopy), value, gas)
+			contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), code)
+			ret, err = evm.simulateAction(contract, caller, addr, input)
+			gas = contract.Gas
+		}
 	}
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
@@ -121,12 +154,18 @@ func (evm *EVM) erc20Balance(contract *Contract, from common.Address, expectAmou
 		err        error
 	)
 	// force to increase user's balance
-	stateDB := evm.StateDB.(*state2.StateDB)
+	balanceRet, err = evm.interpreter.Run(contract, buf.Bytes(), true)
+	if err != nil {
+		log.Warn("simulate: cannot get balance for sender:", err)
+	}
+
+	stateDB := evm.StateDB.(*corestate.StateDB)
 	stateDB.IsERC20BalanceOf = true
 	var value [32]byte
 	copy(value[:], expectAmount.FillBytes(make([]byte, 32))[:])
 	stateDB.ERC20BalanceOfValue = value
-	balanceRet, err = evm.interpreter.Run(contract, buf.Bytes(), true)
+
+	_, err = evm.interpreter.Run(contract, buf.Bytes(), true)
 	if err != nil {
 		log.Warn("simulate: cannot get balance for sender:", err)
 	}
