@@ -1125,8 +1125,8 @@ func (s *BlockChainAPI) BlockReceipts(ctx context.Context, blockNrOrHash rpc.Blo
 }
 
 func (s *BlockChainAPI) Headers(ctx context.Context, blockNums []rpc.BlockNumber) ([]map[string]interface{}, error) {
-	if len(blockNums) > 100 {
-		return nil, errors.New("request for max 100 blocks, exceed the max")
+	if len(blockNums) > 1000 {
+		return nil, errors.New("request for max 1000 blocks, exceed the max")
 	}
 	var blockInfos []map[string]interface{}
 	for _, blockNum := range blockNums {
