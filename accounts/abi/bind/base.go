@@ -225,6 +225,18 @@ func (c *BoundContract) Transact(opts *TransactOpts, method string, params ...in
 	return c.transact(opts, &c.address, input)
 }
 
+// TransactWithFrom invokes the (paid) contract method with params as input values.
+func (c *BoundContract) TransactWithFrom(opts *TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	// Otherwise pack up the parameters and invoke the contract
+	input, err := c.abi.Pack(method, params...)
+	if err != nil {
+		return nil, err
+	}
+	// todo(rjl493456442) check the method is payable or not,
+	// reject invalid transaction at the first place
+	return c.transactWithFrom(opts, &c.address, input)
+}
+
 // RawTransact initiates a transaction with the given raw calldata as the input.
 // It's usually used to initiate transactions for invoking **Fallback** function.
 func (c *BoundContract) RawTransact(opts *TransactOpts, calldata []byte) (*types.Transaction, error) {
@@ -406,6 +418,52 @@ func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, i
 		return signedTx, nil
 	}
 	if err := c.transactor.SendTransaction(ensureContext(opts.Context), signedTx); err != nil {
+		return nil, err
+	}
+	return signedTx, nil
+}
+
+// transact executes an actual transaction invocation, first deriving any missing
+// authorization fields, and then scheduling the transaction for execution.
+func (c *BoundContract) transactWithFrom(opts *TransactOpts, contract *common.Address, input []byte) (*types.Transaction, error) {
+	if opts.GasPrice != nil && (opts.GasFeeCap != nil || opts.GasTipCap != nil) {
+		return nil, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
+	}
+	// Create the transaction
+	var (
+		rawTx *types.Transaction
+		err   error
+	)
+	if opts.GasPrice != nil {
+		rawTx, err = c.createLegacyTx(opts, contract, input)
+	} else if opts.GasFeeCap != nil && opts.GasTipCap != nil {
+		rawTx, err = c.createDynamicTx(opts, contract, input, nil)
+	} else {
+		// Only query for basefee if gasPrice not specified
+		if head, errHead := c.transactor.HeaderByNumber(ensureContext(opts.Context), nil); errHead != nil {
+			return nil, errHead
+		} else if head.BaseFee != nil {
+			rawTx, err = c.createDynamicTx(opts, contract, input, head)
+		} else {
+			// Chain is not London ready -> use legacy transaction
+			rawTx, err = c.createLegacyTx(opts, contract, input)
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	// Sign the transaction and schedule it for execution
+	if opts.Signer == nil {
+		return nil, errors.New("no signer to authorize the transaction with")
+	}
+	signedTx, err := opts.Signer(opts.From, rawTx)
+	if err != nil {
+		return nil, err
+	}
+	if opts.NoSend {
+		return signedTx, nil
+	}
+	if err := c.transactor.SendTransactionWithFrom(ensureContext(opts.Context), opts.From, signedTx); err != nil {
 		return nil, err
 	}
 	return signedTx, nil
