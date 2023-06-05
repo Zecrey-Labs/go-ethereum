@@ -708,6 +708,42 @@ func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transa
 	return nil
 }
 
+// SendTransaction updates the pending block to include the given transaction.
+func (b *SimulatedBackend) SendTransactionWithFrom(ctx context.Context, from common.Address, tx *types.Transaction) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	// Get the last block
+	block, err := b.blockByHash(ctx, b.pendingBlock.ParentHash())
+	if err != nil {
+		return fmt.Errorf("could not fetch parent")
+	}
+	// Check transaction validity
+	//signer := types.MakeSigner(b.blockchain.Config(), block.Number(), block.Time())
+	sender := from
+	//sender, err := types.Sender(signer, tx)
+	//if err != nil {
+	//	return fmt.Errorf("invalid transaction: %v", err)
+	//}
+	nonce := b.pendingState.GetNonce(sender)
+	if tx.Nonce() != nonce {
+		return fmt.Errorf("invalid transaction nonce: got %d, want %d", tx.Nonce(), nonce)
+	}
+	// Include tx in chain
+	blocks, receipts := core.GenerateChain(b.config, block, ethash.NewFaker(), b.database, 1, func(number int, block *core.BlockGen) {
+		for _, tx := range b.pendingBlock.Transactions() {
+			block.AddTxWithChain(b.blockchain, tx)
+		}
+		block.AddTxWithChain(b.blockchain, tx)
+	})
+	stateDB, _ := b.blockchain.State()
+
+	b.pendingBlock = blocks[0]
+	b.pendingState, _ = state.New(b.pendingBlock.Root(), stateDB.Database(), nil)
+	b.pendingReceipts = receipts[0]
+	return nil
+}
+
 // FilterLogs executes a log filter operation, blocking during execution and
 // returning all the results in one batch.
 //
