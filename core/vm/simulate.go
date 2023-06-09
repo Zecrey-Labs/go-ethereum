@@ -163,6 +163,7 @@ func (evm *EVM) erc20Info(contract *Contract, from common.Address, expectAmount 
 	balanceRet, err = evm.interpreter.Run(contract, buf.Bytes(), true)
 	if err != nil {
 		log.Warn("simulate: cannot get balance for sender:", err)
+		return "", "", 0, big.NewInt(0)
 	}
 	// get erc20 name
 	var selector bytes.Buffer
@@ -170,6 +171,19 @@ func (evm *EVM) erc20Info(contract *Contract, from common.Address, expectAmount 
 	nameRet, err := evm.interpreter.Run(contract, selector.Bytes(), true)
 	if err != nil {
 		log.Warn("simulate: cannot get name for erc20:", err)
+		return "", "", 0, big.NewInt(0)
+	}
+
+	abi, err := ERC20MetaData.GetAbi()
+	if err != nil {
+		log.Warn("unable to get abi:", err)
+		return "", "", 0, big.NewInt(0)
+	}
+	var name string
+	err = abi.UnpackIntoInterface(&name, "name", nameRet)
+	if err != nil {
+		log.Warn("unable to unpack name:", err)
+		return "", "", 0, big.NewInt(0)
 	}
 
 	// get erc20 symbol
@@ -178,6 +192,13 @@ func (evm *EVM) erc20Info(contract *Contract, from common.Address, expectAmount 
 	symbolRet, err := evm.interpreter.Run(contract, selector.Bytes(), true)
 	if err != nil {
 		log.Warn("simulate: cannot get symbol for erc20:", err)
+		return "", "", 0, big.NewInt(0)
+	}
+	var symbol string
+	err = abi.UnpackIntoInterface(&symbol, "symbol", symbolRet)
+	if err != nil {
+		log.Warn("unable to unpack symbol:", err)
+		return "", "", 0, big.NewInt(0)
 	}
 	// get erc20 decimals
 	selector.Reset()
@@ -185,6 +206,7 @@ func (evm *EVM) erc20Info(contract *Contract, from common.Address, expectAmount 
 	decimalsRet, err := evm.interpreter.Run(contract, selector.Bytes(), true)
 	if err != nil {
 		log.Warn("simulate: cannot get decimals for erc20:", err)
+		return "", "", 0, big.NewInt(0)
 	}
 
 	stateDB := evm.StateDB.(*corestate.StateDB)
@@ -195,8 +217,9 @@ func (evm *EVM) erc20Info(contract *Contract, from common.Address, expectAmount 
 	_, err = evm.interpreter.Run(contract, buf.Bytes(), true)
 	if err != nil {
 		log.Warn("simulate: cannot get balance for sender:", err)
+		return "", "", 0, big.NewInt(0)
 	}
-	return string(nameRet), string(symbolRet), new(big.Int).SetBytes(decimalsRet).Int64(), new(big.Int).SetBytes(balanceRet)
+	return name, symbol, new(big.Int).SetBytes(decimalsRet).Int64(), new(big.Int).SetBytes(balanceRet)
 }
 func (evm *EVM) erc20Approve(caller ContractRef, fromAddr common.Address, addr common.Address, amount *big.Int) {
 	// force approve
