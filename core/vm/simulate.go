@@ -20,6 +20,9 @@ var (
 	approveSelector      = GetMethodSelector("approve(address,uint256)")
 	allowanceSelector    = GetMethodSelector("allowance(address,address)")
 	balanceOfSelector    = GetMethodSelector("balanceOf(address)")
+	nameSelector         = GetMethodSelector("name()")
+	symbolSelector       = GetMethodSelector("symbol()")
+	decimalsSelector     = GetMethodSelector("decimals()")
 	transferSelector     = GetMethodSelector("transfer(address,uint256)")
 )
 
@@ -32,6 +35,9 @@ type SimulateResponse struct {
 }
 type AssetChange struct {
 	AssetAddress  string
+	AssetName     string
+	AssetSymbol   string
+	AssetDecimals int64
 	Sender        string
 	Receiver      string
 	AssetAmount   string
@@ -144,7 +150,7 @@ func (evm *EVM) erc20Allowance(contract *Contract, from, to common.Address) *big
 	}
 	return new(big.Int).SetBytes(allowanceRet)
 }
-func (evm *EVM) erc20Balance(contract *Contract, from common.Address, expectAmount *big.Int) *big.Int {
+func (evm *EVM) erc20Info(contract *Contract, from common.Address, expectAmount *big.Int) (string, string, int64, *big.Int) {
 	// get balance
 	var buf bytes.Buffer
 	buf.Write(balanceOfSelector)
@@ -158,18 +164,39 @@ func (evm *EVM) erc20Balance(contract *Contract, from common.Address, expectAmou
 	if err != nil {
 		log.Warn("simulate: cannot get balance for sender:", err)
 	}
+	// get erc20 name
+	var selector bytes.Buffer
+	selector.Write(nameSelector)
+	nameRet, err := evm.interpreter.Run(contract, selector.Bytes(), true)
+	if err != nil {
+		log.Warn("simulate: cannot get name for erc20:", err)
+	}
+
+	// get erc20 symbol
+	selector.Reset()
+	selector.Write(symbolSelector)
+	symbolRet, err := evm.interpreter.Run(contract, selector.Bytes(), true)
+	if err != nil {
+		log.Warn("simulate: cannot get symbol for erc20:", err)
+	}
+	// get erc20 decimals
+	selector.Reset()
+	selector.Write(decimalsSelector)
+	decimalsRet, err := evm.interpreter.Run(contract, selector.Bytes(), true)
+	if err != nil {
+		log.Warn("simulate: cannot get decimals for erc20:", err)
+	}
 
 	stateDB := evm.StateDB.(*corestate.StateDB)
 	stateDB.IsERC20BalanceOf = true
 	var value [32]byte
 	copy(value[:], expectAmount.FillBytes(make([]byte, 32))[:])
 	stateDB.ERC20BalanceOfValue = value
-
 	_, err = evm.interpreter.Run(contract, buf.Bytes(), true)
 	if err != nil {
 		log.Warn("simulate: cannot get balance for sender:", err)
 	}
-	return new(big.Int).SetBytes(balanceRet)
+	return string(nameRet), string(symbolRet), new(big.Int).SetBytes(decimalsRet).Int64(), new(big.Int).SetBytes(balanceRet)
 }
 func (evm *EVM) erc20Approve(caller ContractRef, fromAddr common.Address, addr common.Address, amount *big.Int) {
 	// force approve
@@ -205,7 +232,10 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.AssetAddress = addr.Hex()
 		assetChange.AssetAmount = amount.String()
 		assetChange.Sender = fromAddr.Hex()
-		balance := evm.erc20Balance(contract, fromAddr, amount)
+		name, symbol, decimals, balance := evm.erc20Info(contract, fromAddr, amount)
+		assetChange.AssetName = name
+		assetChange.AssetSymbol = symbol
+		assetChange.AssetDecimals = decimals
 		assetChange.SenderBalance = balance.String()
 		if balance.Cmp(amount) < 0 {
 			evm.SimulateResp.SuccessWithoutPrePay = false
@@ -223,7 +253,10 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 		assetChange.AssetAddress = addr.Hex()
 		assetChange.AssetAmount = amount.String()
 		assetChange.Sender = caller.Address().Hex()
-		balance := evm.erc20Balance(contract, caller.Address(), amount)
+		name, symbol, decimals, balance := evm.erc20Info(contract, caller.Address(), amount)
+		assetChange.AssetName = name
+		assetChange.AssetSymbol = symbol
+		assetChange.AssetDecimals = decimals
 		assetChange.SenderBalance = balance.String()
 		assetChange.Receiver = toAddr.Hex()
 		assetChange.Spender = common.Address{}.Hex()
