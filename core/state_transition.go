@@ -295,7 +295,11 @@ func (st *StateTransition) preCheck() error {
 			}
 		}
 	}
-	return st.buyGas()
+	if st.evm.IsSimulated {
+		return nil
+	} else {
+		return st.buyGas()
+	}
 }
 
 // TransitionDb will transition the state by applying the current message and
