@@ -356,6 +356,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	// Check clause 6
 	if msg.Value.Sign() > 0 {
 		if st.evm.IsSimulated {
+			fmt.Println("1111111111111111111111111111111")
 			st.evm.SimulateNativeAsset(msg.From, *msg.To, msg.Value)
 		}
 		if !st.evm.Context.CanTransfer(st.state, msg.From, msg.Value) {
