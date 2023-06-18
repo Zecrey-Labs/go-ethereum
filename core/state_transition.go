@@ -296,6 +296,8 @@ func (st *StateTransition) preCheck() error {
 		}
 	}
 	if st.evm.IsSimulated {
+		st.gasRemaining += st.msg.GasLimit
+		st.initialGas = st.msg.GasLimit
 		return nil
 	} else {
 		return st.buyGas()
