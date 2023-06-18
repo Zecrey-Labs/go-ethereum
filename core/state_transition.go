@@ -354,9 +354,10 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	st.gasRemaining -= gas
 
 	// Check clause 6
+	fmt.Println("msg value:", msg.From.Hex())
+	fmt.Println("msg value:", msg.Value.String())
 	if msg.Value.Sign() > 0 {
 		if st.evm.IsSimulated {
-			fmt.Println("1111111111111111111111111111111")
 			st.evm.SimulateNativeAsset(msg.From, *msg.To, msg.Value)
 		}
 		if !st.evm.Context.CanTransfer(st.state, msg.From, msg.Value) {
