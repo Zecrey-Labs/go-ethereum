@@ -231,7 +231,8 @@ func (st *StateTransition) buyGas() error {
 	balanceCheck := mgval
 	if st.evm.IsSimulated {
 		nBalance := new(big.Int).Set(mgval)
-		st.state.AddBalance(st.msg.From, nBalance.Mul(nBalance, big.NewInt(1000000)))
+		st.state.AddBalance(st.msg.From, nBalance.Mul(nBalance, big.NewInt(100)))
+		balanceCheck.Set(big.NewInt(0))
 	}
 	if st.msg.GasFeeCap != nil {
 		balanceCheck = new(big.Int).SetUint64(st.msg.GasLimit)
