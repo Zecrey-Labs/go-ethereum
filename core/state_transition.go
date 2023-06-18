@@ -355,10 +355,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 
 	// Check clause 6
 	if msg.Value.Sign() > 0 {
-		if st.evm.IsSimulated {
-			st.evm.SimulateNativeAsset(msg.From, *msg.To, msg.Value)
-		}
-		if !st.evm.Context.CanTransfer(st.state, msg.From, msg.Value) {
+		if !st.evm.IsSimulated && !st.evm.Context.CanTransfer(st.state, msg.From, msg.Value) {
 			return nil, fmt.Errorf("%w: address %v", ErrInsufficientFundsForTransfer, msg.From.Hex())
 		}
 	}
