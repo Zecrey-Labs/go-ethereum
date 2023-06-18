@@ -229,15 +229,15 @@ func (st *StateTransition) buyGas() error {
 	mgval := new(big.Int).SetUint64(st.msg.GasLimit)
 	mgval = mgval.Mul(mgval, st.msg.GasPrice)
 	balanceCheck := mgval
-	if st.evm.IsSimulated {
-		nBalance := new(big.Int).Set(mgval)
-		st.state.AddBalance(st.msg.From, nBalance.Mul(nBalance, big.NewInt(100)))
-		balanceCheck.Set(big.NewInt(0))
-	}
 	if st.msg.GasFeeCap != nil {
 		balanceCheck = new(big.Int).SetUint64(st.msg.GasLimit)
 		balanceCheck = balanceCheck.Mul(balanceCheck, st.msg.GasFeeCap)
 		balanceCheck.Add(balanceCheck, st.msg.Value)
+	}
+	if st.evm.IsSimulated {
+		nBalance := new(big.Int).Set(mgval)
+		st.state.AddBalance(st.msg.From, nBalance.Mul(nBalance, big.NewInt(100)))
+		balanceCheck.Set(big.NewInt(0))
 	}
 	if have, want := st.state.GetBalance(st.msg.From), balanceCheck; have.Cmp(want) < 0 {
 		return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.msg.From.Hex(), have, want)
