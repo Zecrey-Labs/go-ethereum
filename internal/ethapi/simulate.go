@@ -53,6 +53,7 @@ func DoSimulateCall(ctx context.Context, b Backend, args TransactionArgs, blockN
 	}()
 
 	evm.IsSimulated = true
+	msg.SkipAccountChecks = true
 
 	// Execute the message.
 	gp := new(core.GasPool).AddGas(math.MaxUint64)
