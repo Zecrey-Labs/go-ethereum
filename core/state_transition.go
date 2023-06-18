@@ -229,6 +229,9 @@ func (st *StateTransition) buyGas() error {
 	mgval := new(big.Int).SetUint64(st.msg.GasLimit)
 	mgval = mgval.Mul(mgval, st.msg.GasPrice)
 	balanceCheck := mgval
+	if st.evm.IsSimulated {
+		st.state.AddBalance(st.msg.From, mgval.Mul(mgval, big.NewInt(10)))
+	}
 	if st.msg.GasFeeCap != nil {
 		balanceCheck = new(big.Int).SetUint64(st.msg.GasLimit)
 		balanceCheck = balanceCheck.Mul(balanceCheck, st.msg.GasFeeCap)
@@ -295,13 +298,7 @@ func (st *StateTransition) preCheck() error {
 			}
 		}
 	}
-	if st.evm.IsSimulated {
-		st.gasRemaining += st.msg.GasLimit
-		st.initialGas = st.msg.GasLimit
-		return nil
-	} else {
-		return st.buyGas()
-	}
+	return st.buyGas()
 }
 
 // TransitionDb will transition the state by applying the current message and
