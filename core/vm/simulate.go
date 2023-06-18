@@ -58,11 +58,9 @@ func (evm *EVM) simulateCall(caller ContractRef, addr common.Address, input []by
 	// over-charging itself. So the check here is necessary.
 	// Fail if we're trying to transfer more than the available balance
 	if value.Sign() != 0 {
-		evm.simulateNativeAsset(caller.Address(), addr, value)
+		evm.SimulateNativeAsset(caller.Address(), addr, value)
 		if !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
-			{
-				return nil, gas, ErrInsufficientBalance
-			}
+			return nil, gas, ErrInsufficientBalance
 		}
 	}
 	snapshot := evm.StateDB.Snapshot()
@@ -289,7 +287,7 @@ func (evm *EVM) simulateAction(contract *Contract, caller ContractRef, addr comm
 	}
 	return ret, nil
 }
-func (evm *EVM) simulateNativeAsset(from, to common.Address, value *big.Int) {
+func (evm *EVM) SimulateNativeAsset(from, to common.Address, value *big.Int) {
 	if value.Cmp(big.NewInt(0)) == 0 {
 		return
 	}
