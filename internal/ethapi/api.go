@@ -1458,6 +1458,16 @@ func newRPCTransactionFromBlockIndex(b *types.Block, index uint64, config *param
 	return newRPCTransaction(txs[index], b.Hash(), b.NumberU64(), b.Time(), index, b.BaseFee(), config)
 }
 
+// newRPCTransactionFromBlockIndex returns a transaction that will serialize to the RPC representation.
+func newRPCTransactionsFromBlock(b *types.Block, config *params.ChainConfig) []*RPCTransaction {
+	var res []*RPCTransaction
+	txs := b.Transactions()
+	for index := range txs {
+		res = append(res, newRPCTransaction(txs[index], b.Hash(), b.NumberU64(), b.Time(), uint64(index), b.BaseFee(), config))
+	}
+	return res
+}
+
 // newRPCRawTransactionFromBlockIndex returns the bytes of a transaction given a block and a transaction index.
 func newRPCRawTransactionFromBlockIndex(b *types.Block, index uint64) hexutil.Bytes {
 	txs := b.Transactions()
@@ -1603,6 +1613,14 @@ func (s *TransactionAPI) GetTransactionByBlockNumberAndIndex(ctx context.Context
 func (s *TransactionAPI) GetTransactionByBlockHashAndIndex(ctx context.Context, blockHash common.Hash, index hexutil.Uint) *RPCTransaction {
 	if block, _ := s.b.BlockByHash(ctx, blockHash); block != nil {
 		return newRPCTransactionFromBlockIndex(block, uint64(index), s.b.ChainConfig())
+	}
+	return nil
+}
+
+// GetTransactionsByBlockHash returns the transaction for the given block hash and index.
+func (s *TransactionAPI) GetTransactionsByBlockHash(ctx context.Context, blockHash common.Hash) []*RPCTransaction {
+	if block, _ := s.b.BlockByHash(ctx, blockHash); block != nil {
+		return newRPCTransactionsFromBlock(block, s.b.ChainConfig())
 	}
 	return nil
 }
