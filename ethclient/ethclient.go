@@ -257,18 +257,6 @@ func (tx *rpcTransaction) UnmarshalJSON(msg []byte) error {
 	return json.Unmarshal(msg, &tx.txExtraInfo)
 }
 
-type rpcTransactions struct {
-	txs []*types.Transaction
-	txExtraInfo
-}
-
-func (tx *rpcTransactions) UnmarshalJSON(msg []byte) error {
-	if err := json.Unmarshal(msg, &tx.txs); err != nil {
-		return err
-	}
-	return json.Unmarshal(msg, &tx.txExtraInfo)
-}
-
 // TransactionByHash returns the transaction with the given hash.
 func (ec *Client) TransactionByHash(ctx context.Context, hash common.Hash) (tx *types.Transaction, isPending bool, err error) {
 	var json *rpcTransaction
@@ -339,15 +327,16 @@ func (ec *Client) TransactionInBlock(ctx context.Context, blockHash common.Hash,
 }
 
 func (ec *Client) TransactionsInBlock(ctx context.Context, number *big.Int) ([]*types.Transaction, error) {
-	var json *rpcTransactions
-	err := ec.c.CallContext(ctx, &json, "eth_getTransactionsByBlockNumber", toBlockNumArg(number))
+	var rpcTxs []*rpcTransaction
+	err := ec.c.CallContext(ctx, &rpcTxs, "eth_getTransactionsByBlockNumber", toBlockNumArg(number))
 	if err != nil {
 		return nil, err
 	}
-	if json == nil {
-		return nil, ethereum.NotFound
+	txs := make([]*types.Transaction, 0, len(rpcTxs))
+	for _, tx := range rpcTxs {
+		txs = append(txs, tx.tx)
 	}
-	return json.txs, err
+	return txs, err
 }
 
 // TransactionReceipt returns the receipt of a transaction by transaction hash.
