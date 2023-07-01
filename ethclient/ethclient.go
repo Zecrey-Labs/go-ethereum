@@ -338,9 +338,9 @@ func (ec *Client) TransactionInBlock(ctx context.Context, blockHash common.Hash,
 	return json.tx, err
 }
 
-func (ec *Client) TransactionsInBlock(ctx context.Context, blockHash common.Hash) ([]*types.Transaction, error) {
+func (ec *Client) TransactionsInBlock(ctx context.Context, number *big.Int) ([]*types.Transaction, error) {
 	var json *rpcTransactions
-	err := ec.c.CallContext(ctx, &json, "eth_getTransactionsByBlockHash", blockHash)
+	err := ec.c.CallContext(ctx, &json, "eth_getTransactionsByBlockNumber", toBlockNumArg(number))
 	if err != nil {
 		return nil, err
 	}
