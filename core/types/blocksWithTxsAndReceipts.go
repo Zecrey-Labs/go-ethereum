@@ -2,6 +2,6 @@ package types
 
 type BlockWithTxsAndReceipts struct {
 	*Header
-	Receipts
-	Transactions
+	Receipts     Receipts     `json:"receipts"`
+	Transactions Transactions `json:"transactions"`
 }
