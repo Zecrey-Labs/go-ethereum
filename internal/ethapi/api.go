@@ -689,6 +689,7 @@ func (s *BlockChainAPI) GetProof(ctx context.Context, address common.Address, st
 				return nil, storageError
 			}
 			storageProof[i] = StorageResult{hexKey, (*hexutil.Big)(state.GetState(address, key).Big()), toHexSlice(proof)}
+
 		} else {
 			storageProof[i] = StorageResult{hexKey, &hexutil.Big{}, []string{}}
 		}
