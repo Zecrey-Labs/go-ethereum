@@ -41,7 +41,8 @@ type LightClientUpdate struct {
 	FinalizedHeader *Header       `rlp:"nil"` // Optional header to announce a point of finality
 	FinalityBranch  merkle.Values // Proof for the announced finality
 
-	score *UpdateScore // Weight of the update to compare between competing ones
+	score            *UpdateScore // Weight of the update to compare between competing ones
+	IsFinalizeUpdate bool
 }
 
 // Validate verifies the validity of the update.
@@ -58,8 +59,11 @@ func (update *LightClientUpdate) Validate() error {
 			return fmt.Errorf("invalid finalized header proof: %w", err)
 		}
 	}
-	if err := merkle.VerifyProof(update.AttestedHeader.Header.StateRoot, params.StateIndexNextSyncCommittee, update.NextSyncCommitteeBranch, merkle.Value(update.NextSyncCommitteeRoot)); err != nil {
-		return fmt.Errorf("invalid next sync committee proof: %w", err)
+
+	if !update.IsFinalizeUpdate {
+		if err := merkle.VerifyProof(update.AttestedHeader.Header.StateRoot, params.StateIndexNextSyncCommittee, update.NextSyncCommitteeBranch, merkle.Value(update.NextSyncCommitteeRoot)); err != nil {
+			return fmt.Errorf("invalid next sync committee proof: %w", err)
+		}
 	}
 	return nil
 }

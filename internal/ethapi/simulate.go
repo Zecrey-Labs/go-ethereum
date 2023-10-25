@@ -53,6 +53,9 @@ func DoSimulateCall(ctx context.Context, b Backend, args TransactionArgs, blockN
 	}()
 
 	evm.IsSimulated = true
+	evm.SimulateResp.SuccessWithoutPrePay = true
+	evm.SimulateResp.SuccessWithPrePay = true
+
 	msg.SkipAccountChecks = true
 
 	// Execute the message.
