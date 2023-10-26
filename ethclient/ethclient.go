@@ -219,7 +219,7 @@ func (ec *Client) BlockReceipts(ctx context.Context, hashOrNumber rpc.BlockNumbe
 // BlocksWithTxsAndReceipts returns blocks including txs and receipts
 func (ec *Client) BlocksWithTxsAndReceipts(ctx context.Context, blockNums []rpc.BlockNumber) ([]types.BlockWithTxsAndReceipts, error) {
 	var blocks []types.BlockWithTxsAndReceipts
-	err := ec.c.CallContext(ctx, &blocks, "eth_blocksWithTxsAndReceipts", blockNums)
+	err := ec.c.CallContext(ctx, &blocks, "eth_getBlocksWithTxsAndReceipts", blockNums)
 	if err == nil && blocks == nil {
 		err = ethereum.NotFound
 	}
