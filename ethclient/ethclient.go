@@ -219,18 +219,21 @@ func (ec *Client) BlockReceipts(ctx context.Context, hashOrNumber rpc.BlockNumbe
 // BlocksWithTxsAndReceipts returns blocks including txs and receipts
 func (ec *Client) BlocksWithTxsAndReceipts(ctx context.Context, blockNums []rpc.BlockNumber) ([]*types.BlockWithTxsAndReceipts, error) {
 	var blocks []*types.BlockWithTxsAndReceipts
-	err := ec.c.CallContext(ctx, &blocks, "eth_getBlocksWithTxsAndReceipts", blockNums)
-	if err == nil && blocks == nil {
-		err = ethereum.NotFound
-	}
-	for i, blockNum := range blockNums {
-		blockByNumber, err := ec.BlockByNumber(ctx, big.NewInt(blockNum.Int64()))
+	for _, blockNum := range blockNums {
+		blockWithTxs, err := ec.BlockByNumber(ctx, big.NewInt(blockNum.Int64()))
 		if err != nil {
 			return nil, err
 		}
-		blocks[i].Transactions = blockByNumber.Transactions()
+		receipts, err := ec.BlockReceipts(ctx, rpc.BlockNumberOrHash{BlockNumber: &blockNum})
+		if err != nil {
+			return nil, err
+		}
+		blocks = append(blocks, &types.BlockWithTxsAndReceipts{
+			Block:    blockWithTxs,
+			Receipts: receipts,
+		})
 	}
-	return blocks, err
+	return blocks, nil
 }
 
 // HeadersByNumber returns block headers from the current canonical chain.
