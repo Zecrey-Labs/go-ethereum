@@ -1,7 +1,8 @@
 package types
 
 type BlockWithTxsAndReceipts struct {
-	Header       *Header     `json:"header"`
-	Receipts     Receipts    `json:"receipts"`
-	Transactions interface{} `json:"transactions"`
+	*Header               `json:"header"`
+	Receipts              `json:"receipts"`
+	Transactions          `json:"transactions"`
+	FormattedTransactions map[string]interface{} `json:"formattedTransactions"`
 }

@@ -228,6 +228,13 @@ func (ec *Client) BlocksWithTxsAndReceipts(ctx context.Context, blockNums []rpc.
 	if err != nil {
 		return nil, err
 	}
+	for i, blockNum := range blockNums {
+		blockByNumber, err := ec.BlockByNumber(ctx, big.NewInt(blockNum.Int64()))
+		if err != nil {
+			return nil, err
+		}
+		blocks[i].Transactions = blockByNumber.Transactions()
+	}
 	return blocks, err
 }
 
