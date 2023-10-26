@@ -6,7 +6,7 @@ type BlockWithTxsAndReceipts struct {
 }
 
 type RpcBlockWithTxsAndReceipts struct {
-	*Header      `json:"header"`
+	*Header
 	Receipts     `json:"receipts"`
 	Transactions interface{} `json:"transactions"`
 }

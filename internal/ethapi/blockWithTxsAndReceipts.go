@@ -7,8 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-func (s *BlockChainAPI) GetBlocksWithTxsAndReceipts(ctx context.Context, blockNums []rpc.BlockNumber) ([]*types.BlockWithTxsAndReceipts, error) {
-	var res []*types.BlockWithTxsAndReceipts
+func (s *BlockChainAPI) GetBlocksWithTxsAndReceipts(ctx context.Context, blockNums []rpc.BlockNumber) ([]*types.RpcBlockWithTxsAndReceipts, error) {
+	var res []*types.RpcBlockWithTxsAndReceipts
 	for _, blockNum := range blockNums {
 		block, err := s.b.BlockByNumber(ctx, blockNum)
 		if err != nil {
@@ -22,9 +22,14 @@ func (s *BlockChainAPI) GetBlocksWithTxsAndReceipts(ctx context.Context, blockNu
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, &types.BlockWithTxsAndReceipts{
-			Header:   block.Header(),
-			Receipts: receipts,
+		blockWithTxs, err := s.GetBlockByNumber(ctx, blockNum, true)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, &types.RpcBlockWithTxsAndReceipts{
+			Header:       block.Header(),
+			Receipts:     receipts,
+			Transactions: blockWithTxs["transactions"],
 		})
 	}
 
