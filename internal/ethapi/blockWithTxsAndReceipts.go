@@ -18,14 +18,18 @@ func (s *BlockChainAPI) BlocksWithTxsAndReceipts(ctx context.Context, blockNums 
 		if hash == (common.Hash{}) {
 			hash = block.Header().Hash()
 		}
-		receipts, err := s.b.GetReceipts(ctx, hash)
+		blockReceipts, err := s.BlockReceipts(ctx, rpc.BlockNumberOrHash{BlockNumber: &blockNum})
+		if err != nil {
+			return nil, err
+		}
+		blockWithTxs, err := s.GetBlockByNumber(ctx, blockNum, true)
 		if err != nil {
 			return nil, err
 		}
 		res = append(res, types.BlockWithTxsAndReceipts{
 			Header:       block.Header(),
-			Receipts:     receipts,
-			Transactions: block.Transactions(),
+			Receipts:     blockReceipts,
+			Transactions: blockWithTxs["transactions"],
 		})
 	}
 
