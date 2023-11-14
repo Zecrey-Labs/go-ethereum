@@ -44,6 +44,11 @@ type BlobTx struct {
 	S *uint256.Int `json:"s" gencodec:"required"`
 }
 
+func (tx *BlobTx) skipAccountChecks() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
 // copy creates a deep copy of the transaction data and initializes all fields.
 func (tx *BlobTx) copy() TxData {
 	cpy := &BlobTx{
