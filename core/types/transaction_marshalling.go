@@ -40,13 +40,16 @@ type txJSON struct {
 	MaxPriorityFeePerGas *hexutil.Big    `json:"maxPriorityFeePerGas"`
 	MaxFeePerGas         *hexutil.Big    `json:"maxFeePerGas"`
 	MaxFeePerDataGas     *hexutil.Big    `json:"maxFeePerDataGas,omitempty"`
-	Value                *hexutil.Big    `json:"value"`
-	Input                *hexutil.Bytes  `json:"input"`
-	AccessList           *AccessList     `json:"accessList,omitempty"`
-	BlobVersionedHashes  []common.Hash   `json:"blobVersionedHashes,omitempty"`
-	V                    *hexutil.Big    `json:"v"`
-	R                    *hexutil.Big    `json:"r"`
-	S                    *hexutil.Big    `json:"s"`
+
+	// eip 4844 upgrade
+	MaxFeePerBlobGas    *hexutil.Big   `json:"maxFeePerBlobGas,omitempty"`
+	Value               *hexutil.Big   `json:"value"`
+	Input               *hexutil.Bytes `json:"input"`
+	AccessList          *AccessList    `json:"accessList,omitempty"`
+	BlobVersionedHashes []common.Hash  `json:"blobVersionedHashes,omitempty"`
+	V                   *hexutil.Big   `json:"v"`
+	R                   *hexutil.Big   `json:"r"`
+	S                   *hexutil.Big   `json:"s"`
 
 	// Deposit transaction fields
 	SourceHash *common.Hash    `json:"sourceHash,omitempty"`
@@ -329,10 +332,17 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 			return errors.New("missing required field 'maxFeePerGas' for txdata")
 		}
 		itx.GasFeeCap = uint256.MustFromBig((*big.Int)(dec.MaxFeePerGas))
-		if dec.MaxFeePerDataGas == nil {
-			return errors.New("missing required field 'maxFeePerDataGas' for txdata")
+		// eip 4844 upgrade
+
+		//if dec.MaxFeePerDataGas == nil {
+		//	return errors.New("missing required field 'maxFeePerDataGas' for txdata")
+		//}
+		//itx.BlobFeeCap = uint256.MustFromBig((*big.Int)(dec.MaxFeePerDataGas))
+
+		if dec.MaxFeePerBlobGas == nil {
+			return errors.New("missing required field 'maxFeePerBlobGas' for txdata")
 		}
-		itx.BlobFeeCap = uint256.MustFromBig((*big.Int)(dec.MaxFeePerDataGas))
+		itx.BlobFeeCap = uint256.MustFromBig((*big.Int)(dec.MaxFeePerBlobGas))
 		if dec.Value == nil {
 			return errors.New("missing required field 'value' in transaction")
 		}

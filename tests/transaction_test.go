@@ -17,6 +17,11 @@
 package tests
 
 import (
+	"context"
+	"fmt"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/stretchr/testify/assert"
+	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -51,4 +56,12 @@ func TestTransaction(t *testing.T) {
 			t.Error(err)
 		}
 	})
+}
+
+func TestTxProof(t *testing.T) {
+	cli, err := ethclient.Dial("https://1rpc.io/eth")
+	assert.Nil(t, err)
+	block, err := cli.BlockByNumber(context.Background(), big.NewInt(19654165))
+	assert.Nil(t, err)
+	fmt.Println(block.Number().Uint64())
 }
