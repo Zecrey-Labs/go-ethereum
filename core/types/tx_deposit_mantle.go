@@ -7,9 +7,7 @@ import (
 	"math/big"
 )
 
-const DepositTxType = 0x7E
-
-type DepositTx struct {
+type DepositTxMantle struct {
 	// SourceHash uniquely identifies the source of the deposit
 	SourceHash common.Hash
 	// From is exposed through the types.Signer, not through TxData
@@ -25,36 +23,36 @@ type DepositTx struct {
 	// Field indicating if this transaction is exempt from the L2 gas limit.
 	IsSystemTransaction bool
 	// EthValue means L2 BVM_ETH mint tag, nil means that there is no need to mint BVM_ETH.
-	//EthValue *big.Int `rlp:"nil"`
+	EthValue *big.Int `rlp:"nil"`
 	// Normal Tx data
 	Data []byte
 	// EthTxValue means L2 BVM_ETH tx tag, nil means that there is no need to transfer BVM_ETH to msg.To.
-	//EthTxValue *big.Int `rlp:"optional"`
+	EthTxValue *big.Int `rlp:"optional"`
 }
 
-func (tx *DepositTx) skipAccountChecks() bool {
+func (tx *DepositTxMantle) skipAccountChecks() bool {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (tx *DepositTx) blobGas() uint64 {
+func (tx *DepositTxMantle) blobGas() uint64 {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (tx *DepositTx) blobGasFeeCap() *big.Int {
+func (tx *DepositTxMantle) blobGasFeeCap() *big.Int {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (tx *DepositTx) blobHashes() []common.Hash {
+func (tx *DepositTxMantle) blobHashes() []common.Hash {
 	//TODO implement me
 	panic("implement me")
 }
 
 // copy creates a deep copy of the transaction data and initializes all fields.
-func (tx *DepositTx) copy() TxData {
-	cpy := &DepositTx{
+func (tx *DepositTxMantle) copy() TxData {
+	cpy := &DepositTxMantle{
 		SourceHash:          tx.SourceHash,
 		From:                tx.From,
 		To:                  copyAddressPtr(tx.To),
@@ -74,37 +72,37 @@ func (tx *DepositTx) copy() TxData {
 }
 
 // accessors for innerTx.
-func (tx *DepositTx) txType() byte           { return DepositTxType }
-func (tx *DepositTx) chainID() *big.Int      { return common.Big0 }
-func (tx *DepositTx) accessList() AccessList { return nil }
-func (tx *DepositTx) data() []byte           { return tx.Data }
-func (tx *DepositTx) gas() uint64            { return tx.Gas }
-func (tx *DepositTx) gasFeeCap() *big.Int    { return new(big.Int) }
-func (tx *DepositTx) gasTipCap() *big.Int    { return new(big.Int) }
-func (tx *DepositTx) gasPrice() *big.Int     { return new(big.Int) }
-func (tx *DepositTx) value() *big.Int        { return tx.Value }
-func (tx *DepositTx) nonce() uint64          { return 0 }
-func (tx *DepositTx) to() *common.Address    { return tx.To }
-func (tx *DepositTx) isSystemTx() bool       { return tx.IsSystemTransaction }
+func (tx *DepositTxMantle) txType() byte           { return DepositTxType }
+func (tx *DepositTxMantle) chainID() *big.Int      { return common.Big0 }
+func (tx *DepositTxMantle) accessList() AccessList { return nil }
+func (tx *DepositTxMantle) data() []byte           { return tx.Data }
+func (tx *DepositTxMantle) gas() uint64            { return tx.Gas }
+func (tx *DepositTxMantle) gasFeeCap() *big.Int    { return new(big.Int) }
+func (tx *DepositTxMantle) gasTipCap() *big.Int    { return new(big.Int) }
+func (tx *DepositTxMantle) gasPrice() *big.Int     { return new(big.Int) }
+func (tx *DepositTxMantle) value() *big.Int        { return tx.Value }
+func (tx *DepositTxMantle) nonce() uint64          { return 0 }
+func (tx *DepositTxMantle) to() *common.Address    { return tx.To }
+func (tx *DepositTxMantle) isSystemTx() bool       { return tx.IsSystemTransaction }
 
-func (tx *DepositTx) effectiveGasPrice(dst *big.Int, baseFee *big.Int) *big.Int {
+func (tx *DepositTxMantle) effectiveGasPrice(dst *big.Int, baseFee *big.Int) *big.Int {
 	return dst.Set(new(big.Int))
 }
 
-func (tx *DepositTx) effectiveNonce() *uint64 { return nil }
+func (tx *DepositTxMantle) effectiveNonce() *uint64 { return nil }
 
-func (tx *DepositTx) rawSignatureValues() (v, r, s *big.Int) {
+func (tx *DepositTxMantle) rawSignatureValues() (v, r, s *big.Int) {
 	return common.Big0, common.Big0, common.Big0
 }
 
-func (tx *DepositTx) setSignatureValues(chainID, v, r, s *big.Int) {
+func (tx *DepositTxMantle) setSignatureValues(chainID, v, r, s *big.Int) {
 	// this is a noop for deposit transactions
 }
 
-func (tx *DepositTx) encode(b *bytes.Buffer) error {
+func (tx *DepositTxMantle) encode(b *bytes.Buffer) error {
 	return rlp.Encode(b, tx)
 }
 
-func (tx *DepositTx) decode(input []byte) error {
+func (tx *DepositTxMantle) decode(input []byte) error {
 	return rlp.DecodeBytes(input, tx)
 }

@@ -50,6 +50,7 @@ func (tx *ArbitrumRetryTx) skipAccountChecks() bool           { return true }
 func (tx *ArbitrumSubmitRetryableTx) skipAccountChecks() bool { return true }
 func (d *ArbitrumDepositTx) skipAccountChecks() bool          { return true }
 func (t *ArbitrumInternalTx) skipAccountChecks() bool         { return true }
+func (t *ZetaCosmosEvmTx) skipAccountChecks() bool            { return true }
 
 type ArbitrumUnsignedTx struct {
 	ChainId *big.Int
