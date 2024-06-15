@@ -42,6 +42,7 @@ type FallbackClient interface {
 var bigZero = big.NewInt(0)
 
 func (tx *LegacyTx) skipAccountChecks() bool                  { return false }
+func (tx *ZetaCosmosEVMTx) skipAccountChecks() bool           { return false }
 func (tx *AccessListTx) skipAccountChecks() bool              { return false }
 func (tx *DynamicFeeTx) skipAccountChecks() bool              { return false }
 func (tx *ArbitrumUnsignedTx) skipAccountChecks() bool        { return false }

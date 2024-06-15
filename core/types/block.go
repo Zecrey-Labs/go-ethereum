@@ -429,6 +429,12 @@ func (b *Block) WithWithdrawals(withdrawals []*Withdrawal) *Block {
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
 func (b *Block) Hash() common.Hash {
+	for _, transaction := range b.transactions {
+		innerTx, ok := transaction.inner.(*ZetaCosmosEVMTx)
+		if ok && innerTx.BlockHash.Hex() != (common.Hash{}).Hex() {
+			return innerTx.BlockHash
+		}
+	}
 	if hash := b.hash.Load(); hash != nil {
 		return hash.(common.Hash)
 	}

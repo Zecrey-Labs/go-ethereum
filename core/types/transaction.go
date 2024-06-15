@@ -402,6 +402,13 @@ func (tx *Transaction) Hash() common.Hash {
 		return hash.(common.Hash)
 	}
 
+	if tx.Type() == ZetaCosmosEVMTxType {
+		zetaTx, ok := tx.inner.(*ZetaCosmosEVMTx)
+		if ok {
+			return zetaTx.TxHash
+		}
+	}
+
 	var h common.Hash
 	if tx.Type() == LegacyTxType {
 		h = rlpHash(tx.inner)
