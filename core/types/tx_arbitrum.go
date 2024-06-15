@@ -1,6 +1,7 @@
 package types
 
 const (
+	ZetaCosmosEVMTxType           = 0x58
 	ArbitrumDepositTxType         = 0x64
 	ArbitrumUnsignedTxType        = 0x65
 	ArbitrumContractTxType        = 0x66

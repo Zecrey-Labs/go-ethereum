@@ -19,6 +19,7 @@ package types
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/ethereum/go-ethereum/rlp"
 	"io"
 	"math/big"
@@ -40,18 +41,23 @@ type txJSON struct {
 	MaxPriorityFeePerGas *hexutil.Big    `json:"maxPriorityFeePerGas"`
 	MaxFeePerGas         *hexutil.Big    `json:"maxFeePerGas"`
 	MaxFeePerDataGas     *hexutil.Big    `json:"maxFeePerDataGas,omitempty"`
-	Value                *hexutil.Big    `json:"value"`
-	Input                *hexutil.Bytes  `json:"input"`
-	AccessList           *AccessList     `json:"accessList,omitempty"`
-	BlobVersionedHashes  []common.Hash   `json:"blobVersionedHashes,omitempty"`
-	V                    *hexutil.Big    `json:"v"`
-	R                    *hexutil.Big    `json:"r"`
-	S                    *hexutil.Big    `json:"s"`
+
+	// eip 4844 upgrade
+	MaxFeePerBlobGas    *hexutil.Big   `json:"maxFeePerBlobGas,omitempty"`
+	Value               *hexutil.Big   `json:"value"`
+	Input               *hexutil.Bytes `json:"input"`
+	AccessList          *AccessList    `json:"accessList,omitempty"`
+	BlobVersionedHashes []common.Hash  `json:"blobVersionedHashes,omitempty"`
+	V                   *hexutil.Big   `json:"v"`
+	R                   *hexutil.Big   `json:"r"`
+	S                   *hexutil.Big   `json:"s"`
 
 	// Deposit transaction fields
 	SourceHash *common.Hash    `json:"sourceHash,omitempty"`
 	From       *common.Address `json:"from,omitempty"`
 	Mint       *hexutil.Big    `json:"mint,omitempty"`
+	EthValue   *hexutil.Big    `json:"ethValue,omitempty"`
+	EthTxValue *hexutil.Big    `json:"ethTxValue,omitempty"`
 	IsSystemTx *bool           `json:"isSystemTx,omitempty"`
 
 	// Arbitrum fields:
@@ -369,10 +375,17 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 			return errors.New("missing required field 'maxFeePerGas' for txdata")
 		}
 		itx.GasFeeCap = uint256.MustFromBig((*big.Int)(dec.MaxFeePerGas))
-		if dec.MaxFeePerDataGas == nil {
-			return errors.New("missing required field 'maxFeePerDataGas' for txdata")
+		// eip 4844 upgrade
+
+		//if dec.MaxFeePerDataGas == nil {
+		//	return errors.New("missing required field 'maxFeePerDataGas' for txdata")
+		//}
+		//itx.BlobFeeCap = uint256.MustFromBig((*big.Int)(dec.MaxFeePerDataGas))
+
+		if dec.MaxFeePerBlobGas == nil {
+			return errors.New("missing required field 'maxFeePerBlobGas' for txdata")
 		}
-		itx.BlobFeeCap = uint256.MustFromBig((*big.Int)(dec.MaxFeePerDataGas))
+		itx.BlobFeeCap = uint256.MustFromBig((*big.Int)(dec.MaxFeePerBlobGas))
 		if dec.Value == nil {
 			return errors.New("missing required field 'value' in transaction")
 		}
@@ -419,41 +432,103 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 			(dec.S != nil && dec.S.ToInt().Cmp(common.Big0) != 0) {
 			return errors.New("deposit transaction signature must be 0 or unset")
 		}
-		var itx DepositTx
-		inner = &itx
-		if dec.To != nil {
-			itx.To = dec.To
-		}
-		if dec.Gas == nil {
-			return errors.New("missing required field 'gas' for txdata")
-		}
-		itx.Gas = uint64(*dec.Gas)
-		if dec.Value == nil {
-			return errors.New("missing required field 'value' in transaction")
-		}
-		itx.Value = (*big.Int)(dec.Value)
-		// mint may be omitted or nil if there is nothing to mint.
-		itx.Mint = (*big.Int)(dec.Mint)
-		if dec.Input == nil {
-			return errors.New("missing required field 'input' in transaction")
-		}
-		itx.Data = *dec.Input
-		if dec.From == nil {
-			return errors.New("missing required field 'from' in transaction")
-		}
-		itx.From = *dec.From
-		if dec.SourceHash == nil {
-			return errors.New("missing required field 'sourceHash' in transaction")
-		}
-		itx.SourceHash = *dec.SourceHash
-		// IsSystemTx may be omitted. Defaults to false.
-		if dec.IsSystemTx != nil {
-			itx.IsSystemTransaction = *dec.IsSystemTx
-		}
 
-		if dec.Nonce != nil {
-			inner = &depositTxWithNonce{DepositTx: itx, EffectiveNonce: uint64(*dec.Nonce)}
+		if dec.EthValue != nil {
+			var itx DepositTxMantle
+			inner = &itx
+			if dec.To != nil {
+				itx.To = dec.To
+			}
+			if dec.Gas == nil {
+				return errors.New("missing required field 'gas' for txdata")
+			}
+			itx.Gas = uint64(*dec.Gas)
+			if dec.Value == nil {
+				return errors.New("missing required field 'value' in transaction")
+			}
+			itx.Value = (*big.Int)(dec.Value)
+			// mint may be omitted or nil if there is nothing to mint.
+			itx.Mint = (*big.Int)(dec.Mint)
+
+			// ethValue may be omitted or nil if there is nothing to mint.
+			if dec.EthValue != nil {
+				itx.EthValue = (*big.Int)(dec.EthValue)
+			}
+			//
+			//// ethValue may be omitted or nil if there is nothing to transfer to msg.To.
+			if dec.EthTxValue != nil {
+				itx.EthTxValue = (*big.Int)(dec.EthTxValue)
+			}
+
+			if dec.Input == nil {
+				return errors.New("missing required field 'input' in transaction")
+			}
+			itx.Data = *dec.Input
+			if dec.From == nil {
+				return errors.New("missing required field 'from' in transaction")
+			}
+			itx.From = *dec.From
+			if dec.SourceHash == nil {
+				return errors.New("missing required field 'sourceHash' in transaction")
+			}
+			itx.SourceHash = *dec.SourceHash
+			// IsSystemTx may be omitted. Defaults to false.
+			if dec.IsSystemTx != nil {
+				itx.IsSystemTransaction = *dec.IsSystemTx
+			}
+
+			if dec.Nonce != nil {
+				inner = &depositMantleTxWithNonce{DepositTxMantle: itx, EffectiveNonce: uint64(*dec.Nonce)}
+			}
+		} else {
+			var itx DepositTx
+			inner = &itx
+			if dec.To != nil {
+				itx.To = dec.To
+			}
+			if dec.Gas == nil {
+				return errors.New("missing required field 'gas' for txdata")
+			}
+			itx.Gas = uint64(*dec.Gas)
+			if dec.Value == nil {
+				return errors.New("missing required field 'value' in transaction")
+			}
+			itx.Value = (*big.Int)(dec.Value)
+			// mint may be omitted or nil if there is nothing to mint.
+			itx.Mint = (*big.Int)(dec.Mint)
+
+			if dec.Input == nil {
+				return errors.New("missing required field 'input' in transaction")
+			}
+			itx.Data = *dec.Input
+			if dec.From == nil {
+				return errors.New("missing required field 'from' in transaction")
+			}
+			itx.From = *dec.From
+			if dec.SourceHash == nil {
+				return errors.New("missing required field 'sourceHash' in transaction")
+			}
+			itx.SourceHash = *dec.SourceHash
+			// IsSystemTx may be omitted. Defaults to false.
+			if dec.IsSystemTx != nil {
+				itx.IsSystemTransaction = *dec.IsSystemTx
+			}
+
+			if dec.Nonce != nil {
+				inner = &depositTxWithNonce{DepositTx: itx, EffectiveNonce: uint64(*dec.Nonce)}
+			}
 		}
+	//case ZetaCosmosEVMTxType:
+	//	fmt.Println(dec.Hash.Hex())
+	//	marshal, err := json.Marshal(dec)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	fmt.Println(string(marshal))
+	//	var itx ZetaCosmosEvmTx
+	//	inner = &itx
+	//	itx.Data = dec.Hash.Bytes()
+
 	case ArbitrumLegacyTxType:
 		var itx LegacyTx
 		if dec.To != nil {
@@ -715,6 +790,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 			RetryData:        *dec.RetryData,
 		}
 	default:
+		fmt.Println(dec.Type)
 		return ErrTxTypeNotSupported
 	}
 
@@ -741,3 +817,20 @@ func (tx *depositTxWithNonce) EncodeRLP(w io.Writer) error {
 }
 
 func (tx *depositTxWithNonce) effectiveNonce() *uint64 { return &tx.EffectiveNonce }
+
+type depositMantleTxWithNonce struct {
+	DepositTxMantle
+	EffectiveNonce uint64
+}
+
+func (tx *depositMantleTxWithNonce) skipAccountChecks() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+// EncodeRLP ensures that RLP encoding this transaction excludes the nonce. Otherwise, the tx Hash would change
+func (tx *depositMantleTxWithNonce) EncodeRLP(w io.Writer) error {
+	return rlp.Encode(w, tx.DepositTxMantle)
+}
+
+func (tx *depositMantleTxWithNonce) effectiveNonce() *uint64 { return &tx.EffectiveNonce }
