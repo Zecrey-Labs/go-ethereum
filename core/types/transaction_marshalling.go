@@ -79,6 +79,10 @@ type txJSON struct {
 	// Only used for encoding:
 	Hash      common.Hash `json:"hash"`
 	BlockHash common.Hash `json:"blockHash"`
+
+	// L1 message transaction fields: [Scroll]
+	Sender     *common.Address `json:"sender,omitempty"`
+	QueueIndex *hexutil.Uint64 `json:"queueIndex,omitempty"`
 }
 
 // MarshalJSON marshals as JSON with a hash.
@@ -479,6 +483,32 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 			if dec.Nonce != nil {
 				inner = &depositMantleTxWithNonce{DepositTxMantle: itx, EffectiveNonce: uint64(*dec.Nonce)}
 			}
+		} else if dec.Sender != nil {
+			var itx L1MessageTx
+			inner = &itx
+			if dec.QueueIndex == nil {
+				return errors.New("missing required field 'queueIndex' in transaction")
+			}
+			itx.QueueIndex = uint64(*dec.QueueIndex)
+			if dec.Gas == nil {
+				return errors.New("missing required field 'gas' in transaction")
+			}
+			itx.Gas = uint64(*dec.Gas)
+			if dec.To != nil {
+				itx.To = dec.To
+			}
+			if dec.Value == nil {
+				return errors.New("missing required field 'value' in transaction")
+			}
+			itx.Value = (*big.Int)(dec.Value)
+			if dec.Input == nil {
+				return errors.New("missing required field 'input' in transaction")
+			}
+			itx.Data = *dec.Input
+			if dec.Sender == nil {
+				return errors.New("missing required field 'sender' in transaction")
+			}
+			itx.Sender = *dec.Sender
 		} else {
 			var itx DepositTx
 			inner = &itx
@@ -504,9 +534,10 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 				return errors.New("missing required field 'from' in transaction")
 			}
 			itx.From = *dec.From
-			if dec.SourceHash != nil {
-				itx.SourceHash = *dec.SourceHash
+			if dec.SourceHash == nil {
+				return errors.New("missing required field 'sourceHash' in transaction")
 			}
+			itx.SourceHash = *dec.SourceHash
 			// IsSystemTx may be omitted. Defaults to false.
 			if dec.IsSystemTx != nil {
 				itx.IsSystemTransaction = *dec.IsSystemTx
